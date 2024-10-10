@@ -2,6 +2,8 @@ use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
 use std::process::Command;
 use egui::Color32;
+use wifi_ssid::get_wifi_ssid;
+
 fn get_ip_address() -> Option<String> {
     if let Ok(interfaces) = get_if_addrs() {
         for iface in interfaces {
@@ -16,39 +18,39 @@ fn get_ip_address() -> Option<String> {
     None
 }
 
-fn get_wifi_name() -> Option<String> {
-
-        // Execute the 'netsh wlan show interfaces' command
-        let output = Command::new("netsh")
-            .arg("wlan")
-            .arg("show")
-            .arg("interfaces")
-            .output()
-            .expect("Failed to execute command");
-
-        // Check if the command executed successfully
-        if output.status.success() {
-            // Convert the command output from bytes to a readable string
-            let ssid_info = String::from_utf8_lossy(&output.stdout);
-
-            // Iterate over the lines of the command output
-            for line in ssid_info.lines() {
-                // Find the line that contains the SSID (ignoring the BSSID line)
-                if line.trim().starts_with("SSID") && !line.contains("BSSID") {
-                    // Extract and print the SSID
-                    let ssid = line.split(":").nth(1).unwrap().trim();
-                    return Some(ssid.parse().unwrap());
-                    //println!("Connected to Wi-Fi: {}", ssid);
-                    //break;
-                }
-            }
-            None
-        } else {
-            // Print error if the command failed
-            eprintln!("Error: {}", String::from_utf8_lossy(&output.stderr));
-            None
-        }
-    }
+// fn get_wifi_name() -> Option<String> {
+//
+//         // Execute the 'netsh wlan show interfaces' command
+//         let output = Command::new("netsh")
+//             .arg("wlan")
+//             .arg("show")
+//             .arg("interfaces")
+//             .output()
+//             .expect("Failed to execute command");
+//
+//         // Check if the command executed successfully
+//         if output.status.success() {
+//             // Convert the command output from bytes to a readable string
+//             let ssid_info = String::from_utf8_lossy(&output.stdout);
+//
+//             // Iterate over the lines of the command output
+//             for line in ssid_info.lines() {
+//                 // Find the line that contains the SSID (ignoring the BSSID line)
+//                 if line.trim().starts_with("SSID") && !line.contains("BSSID") {
+//                     // Extract and print the SSID
+//                     let ssid = line.split(":").nth(1).unwrap().trim();
+//                     return Some(ssid.parse().unwrap());
+//                     //println!("Connected to Wi-Fi: {}", ssid);
+//                     //break;
+//                 }
+//             }
+//             None
+//         } else {
+//             // Print error if the command failed
+//             eprintln!("Error: {}", String::from_utf8_lossy(&output.stderr));
+//             None
+//         }
+//     }
 
 
 fn main() {
@@ -189,10 +191,11 @@ impl eframe::App for MyApp {
             // Wi-Fi Name (if available)
             ui.separator();
             ui.label("Wi-Fi Name:");
-            match get_wifi_name() {
-                Some(wifi_name) => ui.monospace(wifi_name),
-                None => ui.monospace("No Wi-Fi connection found"),
-            }
+            // match wifi_ssid::get_wifi_ssid()() {
+            //     Some(wifi_name) => ui.monospace(wifi_name),
+            //     None => ui.monospace("No Wi-Fi connection found"),
+            // }
+            ui.monospace(get_wifi_ssid().unwrap());
         });
     }
 }

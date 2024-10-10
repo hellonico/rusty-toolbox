@@ -70,7 +70,7 @@ fn main() {
 
     let options = eframe::NativeOptions::default();
     eframe::run_native(
-        "System Info Viewer",
+        "Screen Recording for Mum",
         options,
         Box::new(|_cc| Box::new(RecordingApp::default())),
     )

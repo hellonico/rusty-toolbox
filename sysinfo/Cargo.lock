@@ -1310,15 +1310,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2301,7 +2292,7 @@ dependencies = [
  "egui-winit",
  "get_if_addrs",
  "sysinfo",
- "wifiscanner",
+ "wifi_ssid",
 ]
 
 [[package]]
@@ -2709,13 +2700,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "wifiscanner"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d74e667d34abc74f1e5b509ae3d24641f56514ba2c5a64f9d733ae2061aef856"
+name = "wifi_ssid"
+version = "0.1.0"
 dependencies = [
- "itertools",
- "regex",
+ "cfg-if",
 ]
 
 [[package]]
