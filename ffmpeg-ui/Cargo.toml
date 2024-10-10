@@ -1,0 +1,8 @@
+[package]
+name = "ffmpeg-ui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.22"
+native-dialog = "0.6"

@@ -1,0 +1,9 @@
+[package]
+name = "video-recorder-for-mum"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+egui = "0.22.0"
+egui-winit = "0.22.0"
+eframe = "0.22.0"
