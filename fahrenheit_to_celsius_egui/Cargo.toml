@@ -1,0 +1,18 @@
+[package]
+name = "fahrenheit_to_celsius_egui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.8", features = ["json"] }
+tokio = { version = "1.40.0", features = ["full"] }
+serde_json = "1.0.128"
+eframe = "0.29.1"
+egui = "0.29.1"
+egui-winit = "0.29.1"
+futures = "0.3.31"
+serde = { version = "1.0.210", features = ["derive"] }
+
+[[bin]]
+name = "sample-tokio-egui"
+path = "src/bin/hello.rs"

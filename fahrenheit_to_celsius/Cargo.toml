@@ -1,0 +1,11 @@
+[package]
+name = "fahrenheit_to_celsius"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rocket = { version = "0.5.0-rc.3", features = ["json"] }
+serde = { version = "1.0.210", features = ["derive"] }
+#
+#[workspace]
+#members = ["../fahrenheit_to_celsius_frontend"]

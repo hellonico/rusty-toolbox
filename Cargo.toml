@@ -6,5 +6,5 @@ members = [
     "lib-wifi-ssid",
     "video-recorder-for-mum",
     "ui-bmi-for-dummies",
-    "wasm-command"
-]
+    "wasm-command",
+    "fahrenheit_to_celsius", "fahrenheit_to_celsius_frontend", "fahrenheit_to_celsius_egui"]
