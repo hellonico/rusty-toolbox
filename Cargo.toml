@@ -1,8 +1,10 @@
 [workspace]
+resolver = "2"
 members = [
     "ui-extra-audio",
     "ui-system-stats",
     "lib-wifi-ssid",
     "video-recorder-for-mum",
-    "ui-bmi-for-dummies"
+    "ui-bmi-for-dummies",
+    "wasm-command"
 ]

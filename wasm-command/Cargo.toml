@@ -1,0 +1,19 @@
+[package]
+name = "wasm-command"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies]
+egui = "0.29.1"
+eframe = "0.29.1"
+wasm-bindgen = "0.2.95"
+env_logger = "0.11.5"
+log = "0.4.22"
+wasm-bindgen-futures = "0.4.45"
+web-sys = "0.3.72"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]

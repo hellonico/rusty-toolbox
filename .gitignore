@@ -2,3 +2,5 @@
 .DS_Store
 .idea
 target
+/bmi_log.json
+/wasm-command/dist/
