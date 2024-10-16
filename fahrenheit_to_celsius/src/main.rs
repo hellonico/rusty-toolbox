@@ -28,5 +28,6 @@ fn convert(fahrenheit: f64) -> Json<ConversionOutput> {
 fn rocket() -> _ {
     rocket::build()
         .mount("/", routes![convert])
-        .mount("/", rocket::fs::FileServer::from("static"))
+        .mount("/wasm", rocket::fs::FileServer::from("static-wasm"))
+        .mount("/html", rocket::fs::FileServer::from("static-html"))
 }

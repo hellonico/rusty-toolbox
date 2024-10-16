@@ -7,4 +7,4 @@ members = [
     "video-recorder-for-mum",
     "ui-bmi-for-dummies",
     "wasm-command",
-    "fahrenheit_to_celsius", "fahrenheit_to_celsius_frontend", "fahrenheit_to_celsius_egui"]
+    "fahrenheit_to_celsius", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui"]
