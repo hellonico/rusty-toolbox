@@ -1,7 +1,6 @@
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
-use std::process::Command;
-use egui::Color32;
+use egui::{Color32, Stroke};
 use wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
@@ -96,13 +95,13 @@ impl MyApp {
         ui.painter().circle_filled(ui.min_rect().center(), circle_radius, Color32::LIGHT_GRAY);
 
         // Filled part based on usage
-        let filled_angle = usage_percent * std::f32::consts::TAU; // Full circle is 2π (TAU)
+        // let filled_angle = usage_percent * std::f32::consts::TAU; // Full circle is 2π (TAU)
         let painter = ui.painter();
         painter.add(egui::epaint::CircleShape {
             center: ui.min_rect().center(),
             radius: circle_radius,
             fill: Color32::from_rgb(100, 200, 100), // Greenish color for used space
-            stroke: egui::Stroke::none(),           // Define the stroke (none in this case)
+            stroke: Stroke::default(),           // Define the stroke (none in this case)
         });
 
         // Text in the center
@@ -191,7 +190,7 @@ impl eframe::App for MyApp {
             // Wi-Fi Name (if available)
             ui.separator();
             ui.label("Wi-Fi Name:");
-            // match wifi_ssid::get_wifi_ssid()() {
+            // match lib-wifi-ssid::get_wifi_ssid()() {
             //     Some(wifi_name) => ui.monospace(wifi_name),
             //     None => ui.monospace("No Wi-Fi connection found"),
             // }

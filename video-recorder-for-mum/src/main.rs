@@ -41,11 +41,11 @@ impl App for RecordingApp {
                         let output = "output.mp4";
                         let mut ffmpeg_cmd = Command::new("ffmpeg")
                             .arg("-f")
-                            .arg("gdigrab") // Use `gdigrab` for Windows, `x11grab` for Linux, or `avfoundation` for macOS
+                            .arg("avfoundation") // Use `gdigrab` for Windows, `x11grab` for Linux, or `avfoundation` for macOS
                             .arg("-i")
                             .arg(":0.0") // Use correct display for your system
                             .arg("-f")
-                            .arg("dshow") // Use `dshow` for Windows or `avfoundation` for macOS
+                            .arg("avfoundation") // Use `dshow` for Windows or `avfoundation` for macOS
                             .arg("-i")
                             .arg("default") // Use correct audio device
                             .arg("-c:v")

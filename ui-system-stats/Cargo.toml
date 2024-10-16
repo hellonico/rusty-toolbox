@@ -9,4 +9,5 @@ egui-winit = "0.22.0"
 sysinfo = "0.29"
 eframe = "0.22.0"
 get_if_addrs = "0.5.3"
-wifiscanner = "0.5.1"
+#wifiscanner = "0.5.1"
+wifi_ssid = { path = "../lib-wifi-ssid" }

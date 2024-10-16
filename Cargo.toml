@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "ui-extra-audio",
+    "ui-system-stats",
+    "lib-wifi-ssid",
+    "video-recorder-for-mum",
+    "ui-bmi-for-dummies"
+]
