@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "tunelling",
     "ui-extra-audio",
     "ui-system-stats",
     "lib-wifi-ssid",
