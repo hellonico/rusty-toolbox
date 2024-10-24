@@ -174,7 +174,7 @@ async fn main() -> Result<(), Error> {
                 .short('f')
                 .long("file")
                 .help("Path to the CSV file with SSH tunnels")
-                .default_value("$HOME/tunnels.csv"),
+                .default_value("$HOME/Documents/tunnels.csv"),
         )
         .get_matches();
 
