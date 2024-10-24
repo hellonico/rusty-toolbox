@@ -2,6 +2,7 @@ use clap::Arg;
 use csv::ReaderBuilder;
 use eframe::{egui, Error};
 use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 
@@ -16,6 +17,16 @@ impl MyApp {
             tunnels,
             tunnel_processes: HashMap::new(),
         }
+    }
+
+
+    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
+        // Retrieve the current username from the environment variable
+        let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
+        let command = format!("MSTSC C:\\Users\\{}\\Documents\\{}.rdp", user, connection);
+        Command::new("cmd")
+            .args(&["/C", &command])
+            .spawn()
     }
 
     fn start_ssh_tunnel(&self, command: &str) -> std::io::Result<Child> {
@@ -62,66 +73,81 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            egui::menu::bar(ui, |ui| {
-                ui.menu_button("Menu", |ui| {
-                    if ui.button("Debug").clicked() {
-                        println!("Currently running processes:");
-                        for (name, child_opt) in &self.tunnel_processes {
-                            if let Some(child) = child_opt {
-                                println!("Tunnel: {} | PID: {}", name, child.id());
+
+        fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+            egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+                egui::menu::bar(ui, |ui| {
+                    ui.menu_button("Menu", |ui| {
+                        if ui.button("Debug").clicked() {
+                            println!("Currently running processes:");
+                            for (name, child_opt) in &self.tunnel_processes {
+                                if let Some(child) = child_opt {
+                                    println!("Tunnel: {} | PID: {}", name, child.id());
+                                }
                             }
                         }
-                    }
-                    if ui.button("Start All").clicked() {
-                        self.start_all();
-                    }
-                    if ui.button("Stop All").clicked() {
-                        self.stop_all();
+                        if ui.button("Start All").clicked() {
+                            self.start_all();
+                        }
+                        if ui.button("Stop All").clicked() {
+                            self.stop_all();
+                        }
+                    });
+                });
+            });
+
+            egui::CentralPanel::default().show(ctx, |ui| {
+                egui::Grid::new("tunnel_grid").show(ui, |ui| {
+                    ui.label("Name");
+                    ui.label("Command");
+                    ui.label("Switch");
+                    ui.label("RDP"); // New column for RDP
+                    ui.end_row();
+
+                    // Collect names of tunnels first to avoid borrowing issues
+                    let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
+
+                    for (name, command) in &tunnels {
+                        ui.label(name);
+                        ui.label(command);
+
+                        let is_running = self.tunnel_processes.get(name).map_or(false, |c| c.is_some());
+
+                        if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
+                            if is_running {
+                                self.stop_ssh_tunnel(name);
+                            } else {
+                                match self.start_ssh_tunnel(command) {
+                                    Ok(child) => {
+                                        self.tunnel_processes.insert(name.clone(), Some(child));
+                                        println!("Started tunnel: {}", name);
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Failed to start tunnel {}: {}", name, e);
+                                    }
+                                }
+                            }
+                        }
+
+                        // RDP Button
+                        if ui.button("RDP").clicked() {
+                            match self.start_rdp(name) {
+                                Ok(_) => {
+                                    println!("Started RDP connection for {}", name);
+                                }
+                                Err(e) => {
+                                    eprintln!("Failed to start RDP connection for {}: {}", name, e);
+                                }
+                            }
+                        }
+
+                        ui.end_row();
                     }
                 });
             });
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::Grid::new("tunnel_grid").show(ui, |ui| {
-                ui.label("Name");
-                ui.label("Command");
-                ui.label("Switch");
-                ui.end_row();
-
-                // Collect names of tunnels first to avoid borrowing issues
-                let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
-
-                for (name, command) in &tunnels {
-                    ui.label(name);
-                    ui.label(command);
-
-                    let is_running = self.tunnel_processes.get(name).map_or(false, |c| c.is_some());
-
-                    if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
-                        if is_running {
-                            self.stop_ssh_tunnel(name);
-                        } else {
-                            match self.start_ssh_tunnel(command) {
-                                Ok(child) => {
-                                    self.tunnel_processes.insert(name.clone(), Some(child));
-                                    println!("Started tunnel: {}", name);
-                                }
-                                Err(e) => {
-                                    eprintln!("Failed to start tunnel {}: {}", name, e);
-                                }
-                            }
-                        }
-                    }
-
-                    ui.end_row();
-                }
-            });
-        });
+        }
     }
-}
+
 
 fn read_tunnels(file_path: PathBuf) -> Vec<(String, String)> {
     let mut rdr = ReaderBuilder::new().from_path(file_path).unwrap();
