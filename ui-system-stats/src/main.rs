@@ -1,6 +1,6 @@
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
-use egui::{Color32, Stroke};
+use egui::{Color32, FontId, ScrollArea, Style, TextStyle};
 use wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
@@ -16,41 +16,6 @@ fn get_ip_address() -> Option<String> {
     }
     None
 }
-
-// fn get_wifi_name() -> Option<String> {
-//
-//         // Execute the 'netsh wlan show interfaces' command
-//         let output = Command::new("netsh")
-//             .arg("wlan")
-//             .arg("show")
-//             .arg("interfaces")
-//             .output()
-//             .expect("Failed to execute command");
-//
-//         // Check if the command executed successfully
-//         if output.status.success() {
-//             // Convert the command output from bytes to a readable string
-//             let ssid_info = String::from_utf8_lossy(&output.stdout);
-//
-//             // Iterate over the lines of the command output
-//             for line in ssid_info.lines() {
-//                 // Find the line that contains the SSID (ignoring the BSSID line)
-//                 if line.trim().starts_with("SSID") && !line.contains("BSSID") {
-//                     // Extract and print the SSID
-//                     let ssid = line.split(":").nth(1).unwrap().trim();
-//                     return Some(ssid.parse().unwrap());
-//                     //println!("Connected to Wi-Fi: {}", ssid);
-//                     //break;
-//                 }
-//             }
-//             None
-//         } else {
-//             // Print error if the command failed
-//             eprintln!("Error: {}", String::from_utf8_lossy(&output.stderr));
-//             None
-//         }
-//     }
-
 
 fn main() {
     let mut sys = System::new_all();
@@ -82,40 +47,6 @@ impl MyApp {
         (bytes as f64) / 1_073_741_824.0 // Convert bytes to GB (1 GB = 1024^3 bytes)
     }
 
-
-    // Helper function to draw a filled circle representing disk usage
-    fn draw_disk_usage(&self, ui: &mut egui::Ui, disk: &sysinfo::Disk) {
-        let used_space = disk.total_space() - disk.available_space();
-        let usage_percent = used_space as f32 / disk.total_space() as f32;
-
-        // Determine the size of the circle
-        let circle_radius = 50.0;
-
-        // Background circle (empty space)
-        ui.painter().circle_filled(ui.min_rect().center(), circle_radius, Color32::LIGHT_GRAY);
-
-        // Filled part based on usage
-        // let filled_angle = usage_percent * std::f32::consts::TAU; // Full circle is 2π (TAU)
-        let painter = ui.painter();
-        painter.add(egui::epaint::CircleShape {
-            center: ui.min_rect().center(),
-            radius: circle_radius,
-            fill: Color32::from_rgb(100, 200, 100), // Greenish color for used space
-            stroke: Stroke::default(),           // Define the stroke (none in this case)
-        });
-
-        // Text in the center
-        painter.text(
-            ui.min_rect().center(),
-            egui::Align2::CENTER_CENTER,
-            format!("{:.0}%", usage_percent * 100.0),
-            egui::FontId::proportional(16.0), // Use FontId with a specific size
-            Color32::BLACK,
-        );
-    }
-
-
-    // Helper function to format the uptime in hours, minutes, and seconds
     fn format_uptime(&self) -> String {
         let uptime_seconds = self.sys.uptime();
         let hours = uptime_seconds / 3600;
@@ -130,71 +61,88 @@ impl eframe::App for MyApp {
         // Refresh the system information on each update
         self.sys.refresh_all();
 
+        // Define a smaller font size style
+        let mut style = (*ctx.style()).clone();
+        style.text_styles = [
+            (TextStyle::Heading, FontId::proportional(10.0)),
+            (TextStyle::Body, FontId::proportional(9.0)),
+            (TextStyle::Monospace, FontId::proportional(9.0)),
+        ]
+            .into();
+        ctx.set_style(style);
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("System Information");
+            // Wrap all components in a scrolling panel
+            ScrollArea::vertical().show(ui, |ui| {
+                ui.heading("System Information");
 
-            // OS Version
-            ui.separator();
-            ui.label("OS Version:");
-            ui.monospace(format!("{}", self.sys.long_os_version().unwrap_or_default()));
+                // OS Version
+                ui.separator();
+                ui.label("OS Version:");
+                ui.monospace(format!("{}", self.sys.long_os_version().unwrap_or_default()));
 
+                // Kernel Version
+                ui.separator();
+                ui.label("Kernel Version:");
+                ui.monospace(format!("{}", self.sys.kernel_version().unwrap_or_default()));
 
-            // Uptime
-            ui.separator();
-            ui.label("Uptime:");
-            ui.monospace(self.format_uptime());
+                // Hostname
+                ui.separator();
+                ui.label("Hostname:");
+                ui.monospace(format!("{}", self.sys.host_name().unwrap_or_default()));
 
+                // Core Count
+                ui.separator();
+                ui.label("CPU Core Count:");
+                ui.monospace(format!("{}", self.sys.cpus().len()));
 
-            // CPU Information and Total CPU Usage
-            ui.separator();
-            ui.label("CPU Information:");
-            for cpu in self.sys.cpus() {
-                ui.monospace(format!("{}: {}% usage", cpu.name(), cpu.cpu_usage()));
-            }
-            ui.monospace(format!(
-                "Total CPU Usage: {:.2}%",
-                self.total_cpu_usage()
-            ));
+                // Uptime
+                ui.separator();
+                ui.label("Uptime:");
+                ui.monospace(self.format_uptime());
 
-            // Memory Usage (in GB)
-            ui.separator();
-            ui.label("Memory Usage:");
-            ui.monospace(format!(
-                "Total: {:.2} GB, Used: {:.2} GB",
-                self.get_memory_in_gb(self.sys.total_memory() * 1024),
-                self.get_memory_in_gb(self.sys.used_memory() * 1024)
-            ));
+                // CPU Information and Total CPU Usage
+                ui.separator();
+                ui.label("CPU Information:");
+                for cpu in self.sys.cpus() {
+                    ui.monospace(format!("{}: {}% usage", cpu.name(), cpu.cpu_usage()));
+                }
+                ui.monospace(format!("Total CPU Usage: {:.2}%", self.total_cpu_usage()));
 
-
-            // Disk Usage with Filled Circles
-            ui.separator();
-            ui.label("Disk Usage:");
-            for disk in self.sys.disks() {
-                ui.label(format!(
-                    "{}: Total: {:.2} GB",
-                    disk.name().to_str().unwrap_or_default(),
-                    (disk.total_space() as f64) / 1_000_000_000.0
+                // Memory Usage (in GB)
+                ui.separator();
+                ui.label("Memory Usage:");
+                ui.monospace(format!(
+                    "Total: {:.2} GB, Used: {:.2} GB",
+                    self.get_memory_in_gb(self.sys.total_memory() * 1024),
+                    self.get_memory_in_gb(self.sys.used_memory() * 1024)
                 ));
-                self.draw_disk_usage(ui, disk); // Draw the filled circle for each disk
-            }
 
-            // IP Address
-            ui.separator();
-            ui.label("Network Information:");
-            ui.label("IP Address:");
-            match get_ip_address() {
-                Some(ip) => ui.monospace(ip),
-                None => ui.monospace("No IP address found"),
-            };
+                // Disk Usage
+                ui.separator();
+                ui.label("Disk Usage:");
+                for disk in self.sys.disks() {
+                    ui.label(format!(
+                        "{}: Total: {:.2} GB",
+                        disk.name().to_str().unwrap_or_default(),
+                        (disk.total_space() as f64) / 1_000_000_000.0
+                    ));
+                }
 
-            // Wi-Fi Name (if available)
-            ui.separator();
-            ui.label("Wi-Fi Name:");
-            // match lib-wifi-ssid::get_wifi_ssid()() {
-            //     Some(wifi_name) => ui.monospace(wifi_name),
-            //     None => ui.monospace("No Wi-Fi connection found"),
-            // }
-            ui.monospace(get_wifi_ssid().unwrap());
+                // IP Address
+                ui.separator();
+                ui.label("Network Information:");
+                ui.label("IP Address:");
+                match get_ip_address() {
+                    Some(ip) => ui.monospace(ip),
+                    None => ui.monospace("No IP address found"),
+                };
+
+                // Wi-Fi Name (if available)
+                ui.separator();
+                ui.label("Wi-Fi Name:");
+                ui.monospace(get_wifi_ssid().unwrap_or("No Wi-Fi connection found".to_string()));
+            });
         });
     }
 }
