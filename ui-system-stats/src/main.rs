@@ -1,6 +1,8 @@
+use std::time::Duration;
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
-use egui::{Color32, FontId, ScrollArea, Style, TextStyle};
+use egui::{Color32, FontId, ProgressBar, TextStyle};
+use egui_extras::{TableBuilder, Column};
 use wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
@@ -57,92 +59,136 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Refresh the system information on each update
         self.sys.refresh_all();
 
-        // Define a smaller font size style
         let mut style = (*ctx.style()).clone();
         style.text_styles = [
-            (TextStyle::Heading, FontId::proportional(10.0)),
-            (TextStyle::Body, FontId::proportional(9.0)),
-            (TextStyle::Monospace, FontId::proportional(9.0)),
+            (TextStyle::Button, FontId::proportional(10.0)),
+            (TextStyle::Heading, FontId::proportional(11.0)),
+            (TextStyle::Body, FontId::proportional(10.0)),
+            (TextStyle::Monospace, FontId::proportional(10.0)),
         ]
             .into();
         ctx.set_style(style);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            // Wrap all components in a scrolling panel
-            ScrollArea::vertical().show(ui, |ui| {
-                ui.heading("System Information");
+        egui::CentralPanel::default()
+            .frame(egui::Frame::default().fill(Color32::from_gray(240))).show(ctx, |ui| { // Optional: Set a background color to confirm full width
+            ui.heading("System Information");
 
-                // OS Version
-                ui.separator();
-                ui.label("OS Version:");
-                ui.monospace(format!("{}", self.sys.long_os_version().unwrap_or_default()));
+            TableBuilder::new(ui)
+                .striped(false)
+                .cell_layout(egui::Layout::left_to_right(egui::Align::Max).with_cross_align(egui::Align::Center)) // Center align in cell
+                .column(Column::remainder().resizable(true)) // Auto-adjust columns to fit width
+                .column(Column::remainder())
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Info");
+                    });
+                    header.col(|ui| {
+                        ui.heading("Details");
+                    });
+                })
+                .body(|mut body| {
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("OS Version:"); });
+                        row.col(|ui| { ui.label(self.sys.long_os_version().unwrap_or_default()); });
+                    });
 
-                // Kernel Version
-                ui.separator();
-                ui.label("Kernel Version:");
-                ui.monospace(format!("{}", self.sys.kernel_version().unwrap_or_default()));
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Kernel Version:"); });
+                        row.col(|ui| { ui.label(self.sys.kernel_version().unwrap_or_default()); });
+                    });
 
-                // Hostname
-                ui.separator();
-                ui.label("Hostname:");
-                ui.monospace(format!("{}", self.sys.host_name().unwrap_or_default()));
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Hostname:"); });
+                        row.col(|ui| { ui.label(self.sys.host_name().unwrap_or_default()); });
+                    });
 
-                // Core Count
-                ui.separator();
-                ui.label("CPU Core Count:");
-                ui.monospace(format!("{}", self.sys.cpus().len()));
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("CPU Core Count:"); });
+                        row.col(|ui| { ui.label(format!("{}", self.sys.cpus().len())); });
+                    });
 
-                // Uptime
-                ui.separator();
-                ui.label("Uptime:");
-                ui.monospace(self.format_uptime());
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Uptime:"); });
+                        row.col(|ui| { ui.label(self.format_uptime()); });
+                    });
 
-                // CPU Information and Total CPU Usage
-                ui.separator();
-                ui.label("CPU Information:");
-                for cpu in self.sys.cpus() {
-                    ui.monospace(format!("{}: {}% usage", cpu.name(), cpu.cpu_usage()));
-                }
-                ui.monospace(format!("Total CPU Usage: {:.2}%", self.total_cpu_usage()));
+                    for cpu in self.sys.cpus() {
+                        body.row(20.0, |mut row| {
+                            row.col(|ui| { ui.label(format!("{}:", cpu.name())); });
+                            row.col(|ui| {
+                                ui.add(
+                                    ProgressBar::new(cpu.cpu_usage() / 100.0)
+                                        .show_percentage()
+                                        .desired_width(100.0), // Adjust width here
+                                );
+                            });
+                        });
+                    }
 
-                // Memory Usage (in GB)
-                ui.separator();
-                ui.label("Memory Usage:");
-                ui.monospace(format!(
-                    "Total: {:.2} GB, Used: {:.2} GB",
-                    self.get_memory_in_gb(self.sys.total_memory() * 1024),
-                    self.get_memory_in_gb(self.sys.used_memory() * 1024)
-                ));
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Total CPU Usage:"); });
+                        row.col(|ui| {
+                            ui.add(
+                                ProgressBar::new(self.total_cpu_usage() / 100.0)
+                                    .show_percentage()
+                                    .desired_width(100.0),
+                            );
+                        });
+                    });
 
-                // Disk Usage
-                ui.separator();
-                ui.label("Disk Usage:");
-                for disk in self.sys.disks() {
-                    ui.label(format!(
-                        "{}: Total: {:.2} GB",
-                        disk.name().to_str().unwrap_or_default(),
-                        (disk.total_space() as f64) / 1_000_000_000.0
-                    ));
-                }
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Memory Usage:"); });
+                        row.col(|ui| {
+                            let total_memory = self.get_memory_in_gb(self.sys.total_memory() * 1024);
+                            let used_memory = self.get_memory_in_gb(self.sys.used_memory() * 1024);
+                            let memory_usage = used_memory / total_memory;
+                            ui.add(
+                                ProgressBar::new(memory_usage as f32)
+                                    .show_percentage()
+                                    .desired_width(100.0),
+                            );
+                        });
+                    });
 
-                // IP Address
-                ui.separator();
-                ui.label("Network Information:");
-                ui.label("IP Address:");
-                match get_ip_address() {
-                    Some(ip) => ui.monospace(ip),
-                    None => ui.monospace("No IP address found"),
-                };
+                    for disk in self.sys.disks() {
+                        body.row(20.0, |mut row| {
+                            row.col(|ui| { ui.label(format!("Disk ({}):", disk.name().to_str().unwrap_or_default())); });
+                            row.col(|ui| {
+                                let total_space_gb = (disk.total_space() as f64) / 1_000_000_000.0;
+                                let used_space_gb = total_space_gb - (disk.available_space() as f64) / 1_000_000_000.0;
+                                let disk_usage = used_space_gb / total_space_gb;
+                                ui.add(
+                                    ProgressBar::new(disk_usage as f32)
+                                        .show_percentage()
+                                        .desired_width(100.0)
+                                        .fill(Color32::from_rgb(255, 105, 180)), // Pink color for disk usage
+                                );
+                            });
+                        });
+                    }
 
-                // Wi-Fi Name (if available)
-                ui.separator();
-                ui.label("Wi-Fi Name:");
-                ui.monospace(get_wifi_ssid().unwrap_or("No Wi-Fi connection found".to_string()));
-            });
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("IP Address:"); });
+                        row.col(|ui| {
+                            if let Some(ip) = get_ip_address() {
+                                ui.label(ip);
+                            } else {
+                                ui.label("No IP address found");
+                            }
+                        });
+                    });
+
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Wi-Fi Name:"); });
+                        row.col(|ui| {
+                            ui.label(get_wifi_ssid().unwrap_or("No Wi-Fi connection found".to_string()));
+                        });
+                    });
+                });
         });
     }
 }

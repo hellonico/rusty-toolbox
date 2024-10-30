@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 egui = "0.22.0"
+egui_extras="0.22.0"
 egui-winit = "0.22.0"
 sysinfo = "0.29"
 eframe = "0.22.0"
