@@ -118,18 +118,21 @@ impl eframe::App for MyApp {
                         row.col(|ui| { ui.label(self.format_uptime()); });
                     });
 
-                    for cpu in self.sys.cpus() {
-                        body.row(20.0, |mut row| {
-                            row.col(|ui| { ui.label(format!("{}:", cpu.name())); });
-                            row.col(|ui| {
+                    body.row(20.0, |mut row| {
+                        //row.col(|ui| { ui.label(format!("{}:", cpu.name())); });
+                        row.col(|ui| { ui.label(format!("CPUs {}", self.sys.cpus().len())); });
+                        row.col(|ui| {
+                            for cpu in self.sys.cpus() {
                                 ui.add(
                                     ProgressBar::new(cpu.cpu_usage() / 100.0)
                                         .show_percentage()
-                                        .desired_width(100.0), // Adjust width here
+                                        .desired_height(10.0)
+                                        .desired_width(30.0), // Adjust width here
                                 );
-                            });
+                            }
                         });
-                    }
+                    });
+
 
                     body.row(20.0, |mut row| {
                         row.col(|ui| { ui.label("Total CPU Usage:"); });
@@ -143,11 +146,12 @@ impl eframe::App for MyApp {
                     });
 
                     body.row(20.0, |mut row| {
-                        row.col(|ui| { ui.label("Memory Usage:"); });
+                        let total_memory = self.get_memory_in_gb(self.sys.total_memory() * 1024);
+                        let used_memory = self.get_memory_in_gb(self.sys.used_memory() * 1024);
+                        let memory_usage = used_memory / total_memory;
+
+                        row.col(|ui| { ui.label(format!("Memory : {} Gb", total_memory)); });
                         row.col(|ui| {
-                            let total_memory = self.get_memory_in_gb(self.sys.total_memory() * 1024);
-                            let used_memory = self.get_memory_in_gb(self.sys.used_memory() * 1024);
-                            let memory_usage = used_memory / total_memory;
                             ui.add(
                                 ProgressBar::new(memory_usage as f32)
                                     .show_percentage()
@@ -158,11 +162,12 @@ impl eframe::App for MyApp {
 
                     for disk in self.sys.disks() {
                         body.row(20.0, |mut row| {
-                            row.col(|ui| { ui.label(format!("Disk ({}):", disk.name().to_str().unwrap_or_default())); });
+                            let total_space_gb = (disk.total_space() as f64) / 1_000_000_000.0;
+                            let used_space_gb = total_space_gb - (disk.available_space() as f64) / 1_000_000_000.0;
+                            let disk_usage = used_space_gb / total_space_gb;
+
+                            row.col(|ui| { ui.label(format!("Disk ({}) [{} Gb]:", disk.name().to_str().unwrap_or_default(),total_space_gb)); });
                             row.col(|ui| {
-                                let total_space_gb = (disk.total_space() as f64) / 1_000_000_000.0;
-                                let used_space_gb = total_space_gb - (disk.available_space() as f64) / 1_000_000_000.0;
-                                let disk_usage = used_space_gb / total_space_gb;
                                 ui.add(
                                     ProgressBar::new(disk_usage as f32)
                                         .show_percentage()
