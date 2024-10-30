@@ -1,9 +1,8 @@
-use std::time::Duration;
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
 use egui::{Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{TableBuilder, Column};
-use wifi_ssid::get_wifi_ssid;
+use lib_wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
     if let Ok(interfaces) = get_if_addrs() {
@@ -27,7 +26,10 @@ fn main() {
     eframe::run_native(
         "System Info Viewer",
         options,
-        Box::new(|_cc| Box::new(MyApp::new(sys))),
+        // Box::new(|cc| Box::new(MyApp::new(sys))),
+        Box::new(|_cc| {
+            Ok(Box::new(MyApp::new(sys)) as Box<dyn eframe::App>)
+        }),
     )
         .unwrap();
 }
@@ -59,7 +61,7 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Refresh the system information on each update
         self.sys.refresh_all();
 

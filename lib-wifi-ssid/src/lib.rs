@@ -37,6 +37,7 @@ pub fn get_wifi_ssid() -> Result<String, Box<dyn Error>> {
 }
 
 /// Fetch Wi-Fi SSID for Windows using the 'netsh' command.
+#[cfg(target_os = "windows")]
 fn get_wifi_ssid_windows() -> Result<String, Box<dyn Error>> {
     let output = Command::new("netsh")
         .arg("wlan")
@@ -63,6 +64,7 @@ fn get_wifi_ssid_windows() -> Result<String, Box<dyn Error>> {
 }
 
 /// Fetch Wi-Fi SSID for macOS using the 'networksetup' command.
+#[cfg(target_os = "macos")]
 fn get_wifi_ssid_macos() -> Result<String, Box<dyn Error>> {
     let output = Command::new("networksetup")
         .arg("-getairportnetwork")
