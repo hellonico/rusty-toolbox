@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
     "tunelling",
-    "ui-extra-audio",
+    "ui-extract-audio",
     "ui-system-stats",
     "lib-wifi-ssid",
     "video-recorder-for-mum",

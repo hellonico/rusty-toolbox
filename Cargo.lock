@@ -3301,6 +3301,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "lib_wifi_ssid"
+version = "0.1.0"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.159"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5308,8 +5315,8 @@ dependencies = [
  "egui-winit 0.22.0",
  "egui_extras",
  "get_if_addrs",
+ "lib_wifi_ssid",
  "sysinfo",
- "wifi_ssid",
 ]
 
 [[package]]
@@ -6358,13 +6365,6 @@ name = "widestring"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7219d36b6eac893fa81e84ebe06485e7dcbb616177469b142df14f1f4deb1311"
-
-[[package]]
-name = "wifi_ssid"
-version = "0.1.0"
-dependencies = [
- "cfg-if",
-]
 
 [[package]]
 name = "winapi"
