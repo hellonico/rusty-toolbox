@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "tunelling",
+    "get-location",
     "ui-extract-audio",
     "ui-system-stats",
     "lib-wifi-ssid",
