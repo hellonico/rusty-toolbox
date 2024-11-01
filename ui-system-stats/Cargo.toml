@@ -12,3 +12,4 @@ eframe = "0.29.1"
 get_if_addrs = "0.5.3"
 #wifiscanner = "0.5.1"
 lib_wifi_ssid = { path = "../lib-wifi-ssid" }
+get_location = { path = "../get-location" }

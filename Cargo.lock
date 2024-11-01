@@ -5360,6 +5360,7 @@ dependencies = [
  "egui-winit 0.29.1",
  "egui_extras",
  "get_if_addrs",
+ "get_location",
  "lib_wifi_ssid",
  "sysinfo",
 ]

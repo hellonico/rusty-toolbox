@@ -2,6 +2,7 @@ use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
 use egui::{Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{TableBuilder, Column};
+use get_location::get_location;
 use lib_wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
@@ -132,7 +133,15 @@ impl eframe::App for MyApp {
                             }
                         });
                     });
-
+                    // takes all power for the http request
+                    let mut loc= &get_location().unwrap();
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Location:"); });
+                        row.col(|ui| {
+                            ui.label(&loc.city);
+                            ui.label(&loc.country);
+                        });
+                    });
 
                     body.row(20.0, |mut row| {
                         row.col(|ui| { ui.label("Total CPU Usage:"); });
