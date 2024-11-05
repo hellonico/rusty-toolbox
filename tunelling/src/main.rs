@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
+use egui::{FontDefinitions, FontFamily, FontId, TextStyle};
 
 struct MyApp {
     tunnels: Vec<(String, String)>,
@@ -21,6 +22,14 @@ impl MyApp {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
+        let command = format!("/usr/bin/remmina -c {}", self.get_path_to_rdp(connection));
+        println!("{}", &command.to_string());
+        Command::new("bash")
+            .args(&["-c", &command])
+            .spawn()
+    }
 
     #[cfg(target_os = "windows")]
     fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
@@ -32,14 +41,6 @@ impl MyApp {
             .spawn()
     }
 
-    fn get_parent(&self) -> &str {
-        let parent = self.file_path.as_path().parent().unwrap().to_str().unwrap();
-        parent
-    }
-    fn get_path_to_rdp(&self, connection: &str) -> String {
-        format!("{}/{}.rdp", self.get_parent(), connection)
-    }
-
     #[cfg(target_os = "macos")]
     fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
         let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {}", self.get_path_to_rdp(connection));
@@ -47,6 +48,15 @@ impl MyApp {
             .args(&["-c", &command])
             .spawn()
     }
+
+    fn get_parent(&self) -> String {
+        let parent = self.file_path.as_path().parent().unwrap().display().to_string();
+        parent
+    }
+    fn get_path_to_rdp(&self, connection: &str) -> String {
+        format!("{}/{}.rdp", self.get_parent(), connection)
+    }
+
 
     fn start_ssh_tunnel(&self, command: &str) -> std::io::Result<Child> {
         let mut parts = command.split_whitespace();
@@ -89,11 +99,28 @@ impl MyApp {
             self.stop_ssh_tunnel(&name);
         }
     }
+
 }
 
 impl eframe::App for MyApp {
 
         fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+            // ctx.set_style({
+            //     let mut style = (*ctx.style()).clone();
+            //     style.spacing.window_margin.left = 50.0; // Increase left and right margins
+            //     style.text_styles.insert(TextStyle::Body);
+            //     style
+            // });
+            let mut style = (*ctx.style()).clone();
+            style.text_styles = [
+                (TextStyle::Button, FontId::proportional(10.0)),
+                (TextStyle::Heading, FontId::proportional(11.0)),
+                (TextStyle::Body, FontId::proportional(10.0)),
+                (TextStyle::Monospace, FontId::proportional(10.0)),
+            ]
+                .into();
+            ctx.set_style(style);
+
             egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.menu_button("Menu", |ui| {
@@ -184,6 +211,8 @@ fn read_tunnels(file_path: PathBuf) -> Vec<(String, String)> {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    let path = env::current_dir().unwrap();
+
     let matches = clap::Command::new("Tunnel Manager")
         .version("1.0")
         .author("Your Name")
@@ -193,7 +222,7 @@ async fn main() -> Result<(), Error> {
                 .short('f')
                 .long("file")
                 .help("Path to the CSV file with SSH tunnels")
-                .default_value("$HOME/Documents/tunnels.csv"),
+                .default_value("${path.display}/tunnels.csv"),
         )
         .get_matches();
 
