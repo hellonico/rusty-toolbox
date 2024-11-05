@@ -9,23 +9,42 @@ use std::process::{Child, Command, Stdio};
 struct MyApp {
     tunnels: Vec<(String, String)>,
     tunnel_processes: HashMap<String, Option<Child>>, // Tracks running processes
+    file_path: PathBuf,
 }
 
 impl MyApp {
-    fn new(tunnels: Vec<(String, String)>) -> Self {
+    fn new(file_path: PathBuf) -> Self {
         Self {
-            tunnels,
+            file_path: file_path.clone(),
+            tunnels:read_tunnels(file_path),
             tunnel_processes: HashMap::new(),
         }
     }
 
 
+    #[cfg(target_os = "windows")]
     fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
         // Retrieve the current username from the environment variable
-        let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
-        let command = format!("MSTSC C:\\Users\\{}\\Documents\\{}.rdp", user, connection);
+        // let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
+        let command = format!("MSTSC {}", self.get_path_to_rdp(connection));
         Command::new("cmd")
             .args(&["/C", &command])
+            .spawn()
+    }
+
+    fn get_parent(&self) -> &str {
+        let parent = self.file_path.as_path().parent().unwrap().to_str().unwrap();
+        parent
+    }
+    fn get_path_to_rdp(&self, connection: &str) -> String {
+        format!("{}/{}.rdp", self.get_parent(), connection)
+    }
+
+    #[cfg(target_os = "macos")]
+    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
+        let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {}", self.get_path_to_rdp(connection));
+        Command::new("bash")
+            .args(&["-c", &command])
             .spawn()
     }
 
@@ -179,9 +198,8 @@ async fn main() -> Result<(), Error> {
         .get_matches();
 
     let file_path = matches.get_one::<String>("file").unwrap().into();
-    let tunnels = read_tunnels(file_path);
 
-    let app = MyApp::new(tunnels);
+    let app = MyApp::new(file_path);
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tunnels", options, Box::new(|_cc| Box::new(app)))
 }
