@@ -1,4 +1,4 @@
-use get_location::get_location;
+use get_location::location::get_location;
 
 fn main() {
     match get_location() {
