@@ -6,6 +6,7 @@ members = [
     "ui-extract-audio",
     "ui-system-stats",
     "lib-wifi-ssid",
+    "cli-excel-to-csv",
     "video-recorder-for-mum",
     "ui-bmi-for-dummies",
     "wasm-command",
