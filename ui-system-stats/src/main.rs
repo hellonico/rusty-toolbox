@@ -2,7 +2,8 @@ use sysinfo::{CpuExt, DiskExt, System, SystemExt};
 use get_if_addrs::get_if_addrs;
 use egui::{Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{TableBuilder, Column};
-use get_location::get_location;
+
+use get_location::location::get_location;
 use lib_wifi_ssid::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
@@ -202,6 +203,15 @@ impl eframe::App for MyApp {
                         row.col(|ui| { ui.label("Wi-Fi Name:"); });
                         row.col(|ui| {
                             ui.label(get_wifi_ssid().unwrap_or("No Wi-Fi connection found".to_string()));
+                        });
+                    });
+
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Location:"); });
+                        row.col(|ui| {
+                            let loc = get_location().unwrap();
+                            ui.label(format!("{} - {} / {}", loc.city, loc.region_name, loc.country));
+
                         });
                     });
                 });
