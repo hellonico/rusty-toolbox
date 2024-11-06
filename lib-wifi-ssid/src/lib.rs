@@ -84,6 +84,7 @@ fn get_wifi_ssid_macos() -> Result<String, Box<dyn Error>> {
     }
 }
 
+#[cfg(target_os = "linux")]
 /// Fetch Wi-Fi SSID for Linux using the 'nmcli' command.
 fn get_wifi_ssid_linux() -> Result<String, Box<dyn Error>> {
     let output = Command::new("nmcli")

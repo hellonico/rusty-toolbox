@@ -135,7 +135,7 @@ impl eframe::App for MyApp {
                         });
                     });
                     // takes all power for the http request
-                    let mut loc= &get_location().unwrap();
+                    let loc= &get_location().unwrap();
                     body.row(20.0, |mut row| {
                         row.col(|ui| { ui.label("Location:"); });
                         row.col(|ui| {
