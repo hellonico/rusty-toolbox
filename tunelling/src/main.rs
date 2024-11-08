@@ -1,11 +1,11 @@
-use clap::Arg;
+use clap::Parser;
 use csv::ReaderBuilder;
 use eframe::{egui, Error};
+use egui::{FontId, TextStyle};
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use egui::{FontDefinitions, FontFamily, FontId, TextStyle};
 
 struct MyApp {
     tunnels: Vec<(String, String)>,
@@ -203,32 +203,31 @@ fn read_tunnels(file_path: PathBuf) -> Vec<(String, String)> {
         let record = result.unwrap();
         let name = record.get(0).unwrap_or("").to_string();
         let command = record.get(1).unwrap_or("").to_string();
+        // let user = record.get(2).unwrap_or("").to_string();
         tunnels.push((name, command));
     }
 
     tunnels
 }
 
+
+
+fn get_default_log_path() -> String {
+    let mut path = env::current_dir().unwrap();
+    path.push("tunnels.csv");
+    path.display().to_string()
+}
+
+#[derive(Parser, Debug)]
+struct Cli {
+    #[arg(help="path to tunnels definition csv file.",default_value_t=get_default_log_path())]
+    log_path: String,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let path = env::current_dir().unwrap();
-
-    let matches = clap::Command::new("Tunnel Manager")
-        .version("1.0")
-        .author("Your Name")
-        .about("Manages SSH tunnels")
-        .arg(
-            Arg::new("file")
-                .short('f')
-                .long("file")
-                .help("Path to the CSV file with SSH tunnels")
-                .default_value("${path.display}/tunnels.csv"),
-        )
-        .get_matches();
-
-    let file_path = matches.get_one::<String>("file").unwrap().into();
-
-    let app = MyApp::new(file_path);
+    let args = Cli::parse();
+    let app = MyApp::new(args.log_path.into());
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tunnels", options, Box::new(|_cc| Box::new(app)))
 }

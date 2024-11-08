@@ -1,7 +1,0 @@
-[package]
-name = "lib_wifi_ssid"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-cfg-if = "1.0"  # For conditional compilation based on the platform

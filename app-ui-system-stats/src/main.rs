@@ -3,8 +3,9 @@ use get_if_addrs::get_if_addrs;
 use egui::{Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{TableBuilder, Column};
 
-use get_location::location::get_location;
-use lib_wifi_ssid::get_wifi_ssid;
+use lib_os_utils::location::get_location;
+use lib_os_utils::serial::get_serial_number;
+use lib_os_utils::wifi::get_wifi_ssid;
 
 fn get_ip_address() -> Option<String> {
     if let Ok(interfaces) = get_if_addrs() {
@@ -71,7 +72,7 @@ impl eframe::App for MyApp {
         style.text_styles = [
             (TextStyle::Button, FontId::proportional(10.0)),
             (TextStyle::Heading, FontId::proportional(11.0)),
-            (TextStyle::Body, FontId::proportional(10.0)),
+            (TextStyle::Body, FontId::proportional(11.0)),
             (TextStyle::Monospace, FontId::proportional(10.0)),
         ]
             .into();
@@ -214,6 +215,36 @@ impl eframe::App for MyApp {
 
                         });
                     });
+
+                    body.row(20.0, |mut row| {
+                        row.col(|ui| { ui.label("Serial:"); });
+                        row.col(|ui| {
+                            let loc = get_serial_number().unwrap();
+                            ui.label(format!("{}", loc));
+                        });
+                    });
+
+
+
+                        let manager = battery::Manager::new().unwrap();
+                        for battery in manager.batteries().unwrap() {
+                            body.row(20.0, |mut row| {
+                                row.col(|ui| { ui.label("Battery:"); });
+                                row.col(|ui| {
+                                    let battery = battery.unwrap();
+                                    ui.label(format!("Percentage: {:.2}% State: {:?} Capacity: {:.2} Wh",
+                                             battery.state_of_charge().value * 100.0,
+                                             battery.state(),
+                                             battery.energy().value)
+                                    );
+                                });
+                            });
+
+                        }
+
+
+                    ctx.request_repaint();
+
                 });
         });
     }

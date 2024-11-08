@@ -2,11 +2,10 @@
 resolver = "2"
 members = [
     "tunelling",
-    "get-location",
     "ui-extract-audio",
-    "ui-system-stats",
-    "lib-wifi-ssid",
-    "cli-excel-to-csv",
+    "app-ui-system-stats",
+    "lib-os-utils",
+    "app-cli-excel-to-csv",
     "video-recorder-for-mum",
     "ui-bmi-for-dummies",
     "wasm-command",
