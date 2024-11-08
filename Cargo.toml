@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
-    "tunelling",
+    "app-ui-tunelling",
     "ui-extract-audio",
     "app-ui-system-stats",
     "lib-os-utils",
     "app-cli-excel-to-csv",
     "video-recorder-for-mum",
-    "ui-bmi-for-dummies",
-    "wasm-command",
-    "fahrenheit_to_celsius", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui"]
+    "app-ui-bmi-for-dummies",
+    "sample-wasm-plotting",
+    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui"]

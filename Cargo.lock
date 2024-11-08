@@ -2184,6 +2184,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "extract_audio"
+version = "0.1.0"
+dependencies = [
+ "eframe 0.22.0",
+ "native-dialog",
+]
+
+[[package]]
 name = "fahrenheit_to_celsius"
 version = "0.1.0"
 dependencies = [
@@ -2239,14 +2247,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8090f921a24b04994d9929e204f50b498a33ea6ba559ffaa05e04f7ee7fb5ab"
 dependencies = [
  "simd-adler32",
-]
-
-[[package]]
-name = "ffmpeg-ui"
-version = "0.1.0"
-dependencies = [
- "eframe 0.22.0",
- "native-dialog",
 ]
 
 [[package]]
