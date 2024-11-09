@@ -4,5 +4,5 @@
 target
 /bmi_log.json
 /sample-wasm-plotting/dist/
-app-ui-tunelling/tunnels.csv
+tunelling/tunnels.csv
 /app-cli-excel-to-csv/kurumaebi_課題一覧/

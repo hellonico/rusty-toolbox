@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "app-ui-tunelling",
+    "tunelling",
     "ui-extract-audio",
     "app-ui-system-stats",
     "lib-os-utils",
