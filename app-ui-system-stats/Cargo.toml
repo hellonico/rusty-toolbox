@@ -1,13 +1,13 @@
 [package]
 name = "syshello"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
 egui = "0.29.1"
 egui_extras="0.29.1"
 egui-winit = "0.29.1"
-sysinfo = "0.29"
+sysinfo = "0.32.0"
 eframe = "0.29.1"
 get_if_addrs = "0.5.3"
 #wifiscanner = "0.5.1"

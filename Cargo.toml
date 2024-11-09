@@ -4,9 +4,10 @@ members = [
     "tunelling",
     "ui-extract-audio",
     "app-ui-system-stats",
+    "app-ui-screenshot-every-five-seconds",
     "lib-os-utils",
     "app-cli-excel-to-csv",
     "video-recorder-for-mum",
     "app-ui-bmi-for-dummies",
     "sample-wasm-plotting",
-    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui"]
+    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui", "app-ui-screenshot-every-five-seconds"]

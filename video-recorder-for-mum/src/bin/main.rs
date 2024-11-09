@@ -168,6 +168,7 @@ impl App for RecordingApp {
                 }
             }
 
+
             // Button to open containing folder
             if let Some(output_file) = &*self.last_output_file.lock().unwrap() {
                 if ui.button("Open Containing Folder").clicked() {
