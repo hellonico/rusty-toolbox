@@ -4,16 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-egui = "0.22.0"
-egui-winit = "0.22.0"
-eframe = "0.22.0"
+egui = "0.24.1"
+egui-winit = "0.24.1"
+eframe = "0.24.1"
 chrono = "0.4.38"
-
-
-[[bin]]
-name = "main"
-path = "src/bin/main.rs"
-
+egui_extras = { version = "0.24.1", features = ["image", "all_loaders"] }
+image = {  version = "0.25.5", features = ["webp", "png"] }
+config = "0.14.1"
 
 [[bin]]
 name = "recordingcli"
@@ -21,5 +18,5 @@ path = "src/bin/recordingcli.rs"
 
 
 [[bin]]
-name = "hello"
-path = "src/bin/hello.rs"
+name = "recordingui"
+path = "src/bin/recordingui.rs"
