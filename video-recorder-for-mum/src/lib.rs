@@ -1,7 +1,7 @@
 use std::io::Write;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::{io, thread};
 use std::time::{Duration, Instant};
 use chrono::Local;
 
@@ -35,6 +35,9 @@ impl RecordingApp {
         // Store the start time
         *start_time_lock.lock().unwrap() = Some(Instant::now());
 
+        #[cfg(target_os = "windows")]
+        let default_device = self.get_audio_inputs().unwrap()[0].clone();
+
         thread::spawn(move || {
             #[cfg(target_os = "macos")]
             let ffmpeg_cmd =
@@ -51,6 +54,7 @@ impl RecordingApp {
                     .expect("Failed to start ffmpeg");
 
             #[cfg(target_os = "windows")]
+            //let device =  "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{373B0A46-CD33-448E-B729-8A78893B0100}";
             let ffmpeg_cmd =
                 Command::new("ffmpeg")
                     .arg("-f")
@@ -59,7 +63,7 @@ impl RecordingApp {
                     .arg("desktop") // Adjust devices for your system
                     .arg("dshow")
                     .arg("-i")
-                    .arg("audio=\"Microphone\"")
+                    .arg(format!("audio={}",default_device))
                     .arg("-framerate")
                     .arg("25")
                     .arg(&output_file) // Use dynamically generated filename
@@ -99,4 +103,32 @@ impl RecordingApp {
             None // Return None if no recording is active
         }
     }
+
+
+    /// Retrieves the list of available audio inputs via FFmpeg.
+    pub fn get_audio_inputs(&self) -> io::Result<Vec<String>> {
+        // Execute FFmpeg to list devices
+        let ffmpeg_output = Command::new("ffmpeg")
+            .args(&["-f", "dshow", "-list_devices", "true", "-i", "dummy"])
+            .stderr(Stdio::piped()) // FFmpeg writes device info to stderr
+            .output()?;
+
+        let output = String::from_utf8_lossy(&ffmpeg_output.stderr);
+        let mut audio_inputs = Vec::new();
+
+        // Parse FFmpeg's output for audio devices
+        for line in output.lines() {
+            if line.contains("[dshow") && line.contains("(audio)") {
+                if let Some(start) = line.find('"') {
+                    if let Some(end) = line[start + 1..].find('"') {
+                        let device_name = line[start + 1..start + 1 + end].to_string();
+                        audio_inputs.push(device_name);
+                    }
+                }
+            }
+        }
+
+        Ok(audio_inputs)
+    }
+
 }

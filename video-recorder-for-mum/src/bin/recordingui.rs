@@ -116,7 +116,8 @@ fn main() {
     eframe::run_native(
         "Screen Recorder for Mum", // Updated app name
         options,
-        Box::new(|_cc| Box::new(RecordingAppUI::default())),
+        //Box::new(|_cc| Box::new(RecordingAppUI::default())),
+        Box::new(|_cc| Ok(Box::new(RecordingAppUI::default()) as Box<dyn eframe::App>)),
     )
         .unwrap();
 }
