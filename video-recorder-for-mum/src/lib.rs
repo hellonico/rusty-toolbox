@@ -1,9 +1,12 @@
 use std::io::Write;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
-use std::{io, thread};
+use std::{env, io, thread};
+use std::os::windows::process::CommandExt;
+use std::path::Path;
 use std::time::{Duration, Instant};
 use chrono::Local;
+use winapi::um::winbase::DETACHED_PROCESS;
 
 pub struct RecordingApp {
     pub recording_process: Arc<Mutex<Option<Child>>>,
@@ -23,9 +26,11 @@ impl Default for RecordingApp {
 
 impl RecordingApp {
     pub fn open_containing_folder(output_file: &String) {
-        let folder_path = std::path::Path::new(output_file)
-            .parent()
-            .unwrap();
+        // let folder_path = Path::new(output_file)
+        //     .parent()
+        //     .unwrap();
+        //
+        let folder_path = env::current_dir().unwrap().display().to_string();
 
         #[cfg(target_os = "macos")]
         Command::new("open")
@@ -33,6 +38,7 @@ impl RecordingApp {
             .spawn()
             .expect("Failed to open folder");
 
+        eprintln!("Opening: {} {}", output_file, folder_path);
         #[cfg(target_os = "windows")]
         Command::new("explorer")
             .arg(folder_path)
@@ -60,7 +66,6 @@ impl RecordingApp {
 
         #[cfg(target_os = "windows")]
         let default_device = self.get_audio_inputs().unwrap()[0].clone();
-        // let default_device = "Microphone";
 
         thread::spawn(move || {
             #[cfg(target_os = "macos")]
@@ -91,10 +96,10 @@ impl RecordingApp {
                     .arg("-framerate")
                     .arg("25")
                     .arg(&output_file) // Use dynamically generated filename
+                    .creation_flags(winapi::um::winbase::DETACHED_PROCESS)
                     .stdin(Stdio::piped()) // Open stdin for sending commands
                     .spawn()
                     .expect("Failed to start ffmpeg");
-
             // Lock the process and store it
             *process_lock.lock().unwrap() = Some(ffmpeg_cmd);
         });
@@ -119,15 +124,24 @@ impl RecordingApp {
     }
 
     /// Returns the elapsed time since the recording started.
-    pub fn elapsed_time(&self) -> Option<Duration> {
+    pub fn elapsed_time(&self) -> Option<String> {
         let start_time_lock = self.start_time.lock().unwrap();
         if let Some(start_time) = *start_time_lock {
-            Some(start_time.elapsed())
+            Some(Self::format_duration(start_time.elapsed()))
         } else {
             None // Return None if no recording is active
         }
     }
 
+
+    fn format_duration(duration: Duration) -> String {
+        let total_seconds = duration.as_secs();
+        let hours = total_seconds / 3600;
+        let minutes = (total_seconds % 3600) / 60;
+        let seconds = total_seconds % 60;
+
+        format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+    }
 
     /// Retrieves the list of available audio inputs via FFmpeg.
     pub fn get_audio_inputs(&self) -> io::Result<Vec<String>> {

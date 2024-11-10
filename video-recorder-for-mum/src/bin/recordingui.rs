@@ -1,6 +1,6 @@
+#![windows_subsystem = "windows"]
 use eframe::{egui, App};
 use egui_extras::install_image_loaders;
-use std::process::Command;
 use video_recorder_for_mum::RecordingApp;
 
 
@@ -54,12 +54,12 @@ impl App for RecordingAppUI {
 
                             // Elapsed time label
                             if let Some(elapsed) = self.recording_app.elapsed_time() {
-                                ui.label(format!("{:?}", elapsed));
+                                ui.label(format!("Elapsed time: {}", elapsed));
                             }
 
                             // Button to open containing folder
                             if let Some(output_file) = &*self.recording_app.last_output_file.lock().unwrap() {
-                                ui.label(output_file);
+                                ui.label(output_file.clone());
                                 if ui.button("Open Folder").clicked() {
                                     RecordingApp::open_containing_folder(output_file);
                                 }
