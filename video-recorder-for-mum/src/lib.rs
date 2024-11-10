@@ -22,6 +22,29 @@ impl Default for RecordingApp {
 }
 
 impl RecordingApp {
+    pub fn open_containing_folder(output_file: &String) {
+        let folder_path = std::path::Path::new(output_file)
+            .parent()
+            .unwrap();
+
+        #[cfg(target_os = "macos")]
+        Command::new("open")
+            .arg(folder_path)
+            .spawn()
+            .expect("Failed to open folder");
+
+        #[cfg(target_os = "windows")]
+        Command::new("explorer")
+            .arg(folder_path)
+            .spawn()
+            .expect("Failed to open folder");
+
+        #[cfg(target_os = "linux")]
+        Command::new("xdg-open")
+            .arg(folder_path)
+            .spawn()
+            .expect("Failed to open folder");
+    }
     pub fn start_recording(&self) {
         let process_lock = self.recording_process.clone();
         let start_time_lock = self.start_time.clone();

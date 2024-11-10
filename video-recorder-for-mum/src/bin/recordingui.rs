@@ -8,7 +8,6 @@ pub struct RecordingAppUI {
     recording_app : RecordingApp
 }
 
-
 impl Default for RecordingAppUI {
     fn default() -> Self {
         Self {
@@ -37,7 +36,6 @@ impl App for RecordingAppUI {
                                 // .size(vec2[200.0, 300.0])
                                 // .tint(egui::Color32::LIGHT_BLUE)
                                 .rounding(10.0)
-                            // .size(200.0),  // Rounded corners for the image
                         );
 
                         // Rest of the UI on the right side
@@ -63,27 +61,7 @@ impl App for RecordingAppUI {
                             if let Some(output_file) = &*self.recording_app.last_output_file.lock().unwrap() {
                                 ui.label(output_file);
                                 if ui.button("Open Folder").clicked() {
-                                    let folder_path = std::path::Path::new(output_file)
-                                        .parent()
-                                        .unwrap();
-
-                                    #[cfg(target_os = "macos")]
-                                    Command::new("open")
-                                        .arg(folder_path)
-                                        .spawn()
-                                        .expect("Failed to open folder");
-
-                                    #[cfg(target_os = "windows")]
-                                    Command::new("explorer")
-                                        .arg(folder_path)
-                                        .spawn()
-                                        .expect("Failed to open folder");
-
-                                    #[cfg(target_os = "linux")]
-                                    Command::new("xdg-open")
-                                        .arg(folder_path)
-                                        .spawn()
-                                        .expect("Failed to open folder");
+                                    RecordingApp::open_containing_folder(output_file);
                                 }
                             }
                         });
