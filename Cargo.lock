@@ -3483,8 +3483,13 @@ dependencies = [
  "bytemuck",
  "byteorder",
  "color_quant",
+ "exr",
+ "gif",
+ "jpeg-decoder",
  "num-traits",
  "png",
+ "qoi",
+ "tiff",
 ]
 
 [[package]]
@@ -3698,6 +3703,9 @@ name = "jpeg-decoder"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5d4a7da358eff58addd2877a45865158f0d78c911d43a5784ceb7bbf52833b0"
+dependencies = [
+ "rayon",
+]
 
 [[package]]
 name = "js-sys"
@@ -6889,7 +6897,7 @@ dependencies = [
  "eframe 0.29.1",
  "egui 0.29.1",
  "egui_extras",
- "image 0.25.5",
+ "image 0.24.9",
  "winapi 0.3.9",
 ]
 

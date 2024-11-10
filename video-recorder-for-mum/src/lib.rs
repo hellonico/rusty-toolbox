@@ -60,6 +60,7 @@ impl RecordingApp {
 
         #[cfg(target_os = "windows")]
         let default_device = self.get_audio_inputs().unwrap()[0].clone();
+        // let default_device = "Microphone";
 
         thread::spawn(move || {
             #[cfg(target_os = "macos")]
@@ -77,16 +78,16 @@ impl RecordingApp {
                     .expect("Failed to start ffmpeg");
 
             #[cfg(target_os = "windows")]
-            //let device =  "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\\wave_{373B0A46-CD33-448E-B729-8A78893B0100}";
             let ffmpeg_cmd =
                 Command::new("ffmpeg")
                     .arg("-f")
                     .arg("gdigrab")
                     .arg("-i")
                     .arg("desktop") // Adjust devices for your system
+                    .arg("-f")
                     .arg("dshow")
                     .arg("-i")
-                    .arg(format!("audio={}",default_device))
+                    .arg(format!("audio={}", default_device))
                     .arg("-framerate")
                     .arg("25")
                     .arg(&output_file) // Use dynamically generated filename
