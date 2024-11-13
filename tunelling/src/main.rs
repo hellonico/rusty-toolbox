@@ -1,16 +1,84 @@
 use clap::Parser;
 use csv::ReaderBuilder;
 use eframe::{egui, Error};
-use egui::{FontId, TextStyle};
+use egui::{FontId, TextBuffer, TextStyle};
 use std::collections::HashMap;
 use std::env;
+use std::fmt::format;
+use std::fs::File;
+use std::io::Write;
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{exit, Child, Command, Stdio};
+use regex::Regex;
+use tokio::io::AsyncWriteExt;
+
+const RDP_TEMPLATE: &str = r"
+screen mode id:i:2
+use multimon:i:0
+desktopwidth:i:1920
+desktopheight:i:1080
+session bpp:i:32
+winposstr:s:0,1,626,176,1617,879
+compression:i:1
+keyboardhook:i:2
+audiocapturemode:i:0
+videoplaybackmode:i:1
+connection type:i:7
+networkautodetect:i:1
+bandwidthautodetect:i:1
+displayconnectionbar:i:1
+enableworkspacereconnect:i:0
+disable wallpaper:i:0
+allow font smoothing:i:0
+allow desktop composition:i:0
+disable full window drag:i:1
+disable menu anims:i:1
+disable themes:i:0
+disable cursor setting:i:0
+bitmapcachepersistenable:i:1
+audiomode:i:0
+redirectprinters:i:1
+redirectlocation:i:0
+redirectcomports:i:0
+redirectsmartcards:i:1
+redirectwebauthn:i:1
+redirectclipboard:i:1
+redirectposdevices:i:0
+autoreconnection enabled:i:1
+authentication level:i:2
+prompt for credentials:i:0
+negotiate security layer:i:1
+remoteapplicationmode:i:0
+alternate shell:s:
+shell working directory:s:
+gatewayhostname:s:
+gatewayusagemethod:i:4
+gatewaycredentialssource:i:1
+gatewayprofileusagemethod:i:0
+promptcredentialonce:i:1
+gatewaybrokeringtype:i:0
+use redirection server name:i:0
+rdgiskdcproxy:i:0
+kdcproxyname:s:
+enablerdsaadauth:i:0
+drivestoredirect:s:
+
+full address:s:localhost:{port}
+username:s:{user}
+";
 
 struct MyApp {
-    tunnels: Vec<(String, String)>,
+    tunnels: Vec<Tunnel>,
     tunnel_processes: HashMap<String, Option<Child>>, // Tracks running processes
     file_path: PathBuf,
+}
+
+#[derive(Clone)]
+struct Tunnel {
+    pub name:String,
+    pub command:String,
+    pub user:String,
+    pub port:String
 }
 
 impl MyApp {
@@ -21,10 +89,25 @@ impl MyApp {
             tunnel_processes: HashMap::new(),
         }
     }
+    fn get_path_to_rdp2(&self, connection: Tunnel) -> PathBuf {
+        let rdp_file_content = (RDP_TEMPLATE.replace("{user}", &connection.user)).as_str()
+            .replace("{port}", &connection.port);
+        println!("{}", rdp_file_content);
+
+        // Generate a temporary file path
+        let temp_dir = env::temp_dir();
+        let rdp_file_path = temp_dir.join(format!("{}.rdp", connection.name));
+
+        // Write the RDP file content to the temporary file
+        let mut file = File::create(&rdp_file_path).unwrap();
+        let _ = file.write_all(rdp_file_content.as_bytes());
+
+        rdp_file_path
+    }
 
     #[cfg(target_os = "linux")]
-    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
-        let command = format!("/usr/bin/remmina -c {}", self.get_path_to_rdp(connection));
+    fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
+        let command = format!("/usr/bin/remmina -c {:?}", self.get_path_to_rdp2(connection));
         println!("{}", &command.to_string());
         Command::new("bash")
             .args(&["-c", &command])
@@ -32,18 +115,18 @@ impl MyApp {
     }
 
     #[cfg(target_os = "windows")]
-    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
+    fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
         // Retrieve the current username from the environment variable
         // let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
-        let command = format!("MSTSC {}", self.get_path_to_rdp(connection));
+        let command = format!("MSTSC {:?}", self.get_path_to_rdp2(connection));
         Command::new("cmd")
             .args(&["/C", &command])
             .spawn()
     }
 
     #[cfg(target_os = "macos")]
-    fn start_rdp(&self, connection: &str) -> std::io::Result<Child> {
-        let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {}", self.get_path_to_rdp(connection));
+    fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
+        let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {:?}", self.get_path_to_rdp2(connection));
         Command::new("bash")
             .args(&["-c", &command])
             .spawn()
@@ -53,8 +136,8 @@ impl MyApp {
         let parent = self.file_path.as_path().parent().unwrap().display().to_string();
         parent
     }
-    fn get_path_to_rdp(&self, connection: &str) -> String {
-        format!("{}/{}.rdp", self.get_parent(), connection)
+    fn get_path_to_rdp(&self, connection: Tunnel) -> String {
+        format!("{}/{}.rdp", self.get_parent(), connection.name)
     }
 
 
@@ -78,7 +161,7 @@ impl MyApp {
     }
 
     fn start_all(&mut self) {
-        for (name, command) in &self.tunnels {
+        for Tunnel {name, command, ..} in &self.tunnels {
             if !self.tunnel_processes.contains_key(name) {
                 match self.start_ssh_tunnel(command) {
                     Ok(child) => {
@@ -100,17 +183,24 @@ impl MyApp {
         }
     }
 
+    /// Refresh tunnels by re-reading the CSV file
+    fn refresh_tunnels(&mut self) {
+        self.tunnels = read_tunnels(self.file_path.clone());
+        println!("Tunnels refreshed!");
+    }
+
+    /// Quit the application, stopping all tunnels
+    fn quit_application(&mut self, frame: &mut eframe::Frame) {
+        println!("Stopping all tunnels and quitting...");
+        self.stop_all();
+        exit(0);
+    }
+
 }
 
 impl eframe::App for MyApp {
 
-        fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-            // ctx.set_style({
-            //     let mut style = (*ctx.style()).clone();
-            //     style.spacing.window_margin.left = 50.0; // Increase left and right margins
-            //     style.text_styles.insert(TextStyle::Body);
-            //     style
-            // });
+        fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
             let mut style = (*ctx.style()).clone();
             style.text_styles = [
                 (TextStyle::Button, FontId::proportional(10.0)),
@@ -138,6 +228,12 @@ impl eframe::App for MyApp {
                         if ui.button("Stop All").clicked() {
                             self.stop_all();
                         }
+                        if ui.button("Refresh Tunnels").clicked() {
+                            self.refresh_tunnels(); // Call the new refresh function
+                        }
+                        if ui.button("Quit").clicked() {
+                            self.quit_application(frame); // Call the quit function
+                        }
                     });
                 });
             });
@@ -153,17 +249,17 @@ impl eframe::App for MyApp {
                     // Collect names of tunnels first to avoid borrowing issues
                     let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
 
-                    for (name, command) in &tunnels {
+                    for  tunnel @ Tunnel {name, command, user, ..} in &tunnels {
                         ui.label(name);
                         ui.label(command);
 
-                        let is_running = self.tunnel_processes.get(name).map_or(false, |c| c.is_some());
+                        let is_running = self.tunnel_processes.get(name.as_str()).map_or(false, |c| c.is_some());
 
                         if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
                             if is_running {
-                                self.stop_ssh_tunnel(name);
+                                self.stop_ssh_tunnel(name.as_str());
                             } else {
-                                match self.start_ssh_tunnel(command) {
+                                match self.start_ssh_tunnel(command.as_str()) {
                                     Ok(child) => {
                                         self.tunnel_processes.insert(name.clone(), Some(child));
                                         println!("Started tunnel: {}", name);
@@ -175,17 +271,35 @@ impl eframe::App for MyApp {
                             }
                         }
 
-                        // RDP Button
-                        if ui.button("RDP").clicked() {
-                            match self.start_rdp(name) {
-                                Ok(_) => {
-                                    println!("Started RDP connection for {}", name);
+                        if user != "" {
+                            // RDP Button
+                            if ui.button("RDP").clicked() {
+                                // Check if the tunnel is running. If not, start it.
+                                if !is_running {
+                                    match self.start_ssh_tunnel(command) {
+                                        Ok(child) => {
+                                            self.tunnel_processes.insert(name.clone(), Some(child));
+                                            println!("Started tunnel: {}", name);
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Failed to start tunnel {}: {}", name, e);
+                                            return;
+                                        }
+                                    }
                                 }
-                                Err(e) => {
-                                    eprintln!("Failed to start RDP connection for {}: {}", name, e);
+
+                                // Now proceed with starting the RDP connection
+                                match self.start_rdp(tunnel.clone()) {
+                                    Ok(_) => {
+                                        println!("Started RDP connection for {}", name);
+                                    }
+                                    Err(e) => {
+                                        eprintln!("Failed to start RDP connection for {}: {}", name, e);
+                                    }
                                 }
                             }
                         }
+
 
                         ui.end_row();
                     }
@@ -194,17 +308,31 @@ impl eframe::App for MyApp {
         }
     }
 
+fn get_port(input: &str) -> &str {
+    let re = Regex::new(r"-L (\d+):").unwrap();
 
-fn read_tunnels(file_path: PathBuf) -> Vec<(String, String)> {
+    if let Some(captures) = re.captures(input) {
+        if let Some(port) = captures.get(1) {
+            // println!("Captured value: {}", port.as_str())
+            port.as_str()
+        } else {""}
+    } else {""}
+}
+
+fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> {
     let mut rdr = ReaderBuilder::new().from_path(file_path).unwrap();
     let mut tunnels = Vec::new();
 
     for result in rdr.records() {
         let record = result.unwrap();
-        let name = record.get(0).unwrap_or("").to_string();
-        let command = record.get(1).unwrap_or("").to_string();
-        // let user = record.get(2).unwrap_or("").to_string();
-        tunnels.push((name, command));
+        let tunnel = Tunnel {
+            name:  record.get(0).unwrap_or("").to_string(),
+            command: record.get(1).unwrap_or("").to_string(),
+            user: record.get(2).unwrap_or("").to_string(),
+            port: get_port(record.get(1).unwrap_or("")).into(),
+        };
+
+        tunnels.push(tunnel);
     }
 
     tunnels
