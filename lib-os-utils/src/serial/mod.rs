@@ -2,7 +2,8 @@ use std::process::Command;
 
 #[cfg(target_os = "linux")]
 pub fn get_serial_number() -> Option<String> {
-    let output = Command::new("dmidecode")
+    let output = Command::new("sudo")
+        .arg("dmidecode")
         .arg("-s")
         .arg("system-serial-number")
         .output()
