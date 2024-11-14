@@ -474,18 +474,41 @@ fn get_port(input: &str) -> &str {
         } else {""}
     } else {""}
 }
-
 fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> {
     let mut rdr = ReaderBuilder::new().from_path(file_path).unwrap();
     let mut tunnels = Vec::new();
+    let mut next_port = 3389; // Start with the base port
 
     for result in rdr.records() {
         let record = result.unwrap();
+
+        // Extract the name and user
+        let name = record.get(0).unwrap_or("").to_string();
+        let user = record.get(2).unwrap_or("").to_string();
+
+        // Generate the command if empty
+        let command = if let Some(cmd) = record.get(1) {
+            if cmd.trim().is_empty() {
+                // Generate a default command
+                let port = next_port;
+                next_port += 1; // Increment the port for the next tunnel
+                format!("ssh {} -L {}:127.0.0.1:3389", name, port)
+            } else {
+                cmd.to_string()
+            }
+        } else {
+            // Handle entirely missing column
+            let port = next_port;
+            next_port += 1;
+            format!("ssh {} -L {}:127.0.0.1:3389", name, port)
+        };
+
+        // Create the Tunnel instance
         let tunnel = Tunnel {
-            name:  record.get(0).unwrap_or("").to_string(),
-            command: record.get(1).unwrap_or("").to_string(),
-            user: record.get(2).unwrap_or("").to_string(),
-            port: get_port(record.get(1).unwrap_or("")).into(),
+            name,
+            command: command.clone(),
+            user,
+            port: get_port(&command).into(),
         };
 
         tunnels.push(tunnel);
@@ -493,6 +516,7 @@ fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> {
 
     tunnels
 }
+
 
 
 
