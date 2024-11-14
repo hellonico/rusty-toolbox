@@ -171,6 +171,7 @@ impl MyApp {
         // Generate a temporary file path
         let temp_dir = env::temp_dir();
         let rdp_file_path = temp_dir.join(format!("{}.rdp", connection.name));
+        println!("{} - {}", temp_dir.display(), rdp_file_path.display());
 
         // Write the RDP file content to the temporary file
         let mut file = File::create(&rdp_file_path).unwrap();
@@ -192,7 +193,7 @@ impl MyApp {
     fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
         // Retrieve the current username from the environment variable
         // let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
-        let command = format!("MSTSC {:?}", self.get_path_to_rdp2(connection));
+        let command = format!("MSTSC {:}", self.get_path_to_rdp2(connection).to_str().unwrap());
         Command::new("cmd")
             .args(&["/C", &command])
             .spawn()
