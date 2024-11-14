@@ -4,9 +4,10 @@ use eframe::{egui, Error};
 use egui::{FontId, TextBuffer, TextStyle};
 use std::collections::HashMap;
 use std::env;
+use std::env::home_dir;
 use std::fmt::format;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{exit, Child, Command, Stdio};
 use regex::Regex;
@@ -81,7 +82,66 @@ struct Tunnel {
     pub port:String
 }
 
+
+const PREF_FILE: &str = ".tunnels_pref";
+
+
 impl MyApp {
+
+    /// Load the last used tunnel file from the preference file
+    fn get_last_used_file() -> Option<PathBuf> {
+        if let Some(home_dir) = home_dir() {
+            let pref_file = home_dir.join(PREF_FILE);
+            if pref_file.exists() {
+                if let Ok(mut file) = File::open(pref_file) {
+                    let mut content = String::new();
+                    if file.read_to_string(&mut content).is_ok() {
+                        return Some(PathBuf::from(content.trim()));
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Save the currently used tunnel file to the preference file
+    fn save_last_used_file(file_path: &PathBuf) {
+        if let Some(home_dir) = home_dir() {
+            let pref_file = home_dir.join(PREF_FILE);
+            if let Ok(mut file) = File::create(pref_file) {
+                let _ = file.write_all(file_path.to_string_lossy().as_bytes());
+            }
+        }
+    }
+
+    /// Initialize MyApp, defaulting to the last used file or an empty state
+    fn new_with_fallback(file_path: Option<PathBuf>) -> Self {
+        let path = file_path.or_else(MyApp::get_last_used_file);
+
+        if let Some(valid_path) = path {
+            if valid_path.exists() {
+                println!("Loading tunnels from {:?}", valid_path);
+                let tunnels = read_tunnels(valid_path.clone());
+                Self::save_last_used_file(&valid_path);
+                return Self {
+                    file_path: valid_path,
+                    tunnels,
+                    tunnel_processes: HashMap::new(),
+                };
+            } else {
+                println!("Specified or last used file {:?} does not exist.", valid_path);
+            }
+        }
+
+        // Fallback to empty tunnels
+        println!("No valid tunnel file provided or found. Starting with an empty list.");
+        Self {
+            file_path: PathBuf::new(),
+            tunnels: vec![],
+            tunnel_processes: HashMap::new(),
+        }
+    }
+
     fn new(file_path: PathBuf) -> Self {
         Self {
             file_path: file_path.clone(),
@@ -130,6 +190,10 @@ impl MyApp {
         Command::new("bash")
             .args(&["-c", &command])
             .spawn()
+    }
+
+    pub fn is_tunnel_running(&self, name: &str) -> bool {
+        self.tunnel_processes.contains_key(name)
     }
 
     fn get_parent(&self) -> String {
@@ -288,6 +352,25 @@ impl eframe::App for MyApp {
                                     }
                                 }
 
+                                // Polling mechanism to wait for the tunnel to start
+                                let mut retries = 5; // Number of retries
+                                let delay = std::time::Duration::from_millis(200); // Delay between retries
+
+                                while retries > 0 {
+                                    std::thread::sleep(delay);
+                                    if self.is_tunnel_running(&name) { // Check if the tunnel is running
+                                        break;
+                                    }
+                                    println!("Waiting for tunnel to start: {} ({} retries left)", name, retries);
+                                    retries -= 1;
+                                }
+
+                                // If the tunnel is still not running, exit with an error
+                                if !self.is_tunnel_running(&name) {
+                                    eprintln!("Tunnel did not start in time for {}", name);
+                                    return;
+                                }
+
                                 // Now proceed with starting the RDP connection
                                 match self.start_rdp(tunnel.clone()) {
                                     Ok(_) => {
@@ -348,14 +431,57 @@ fn get_default_log_path() -> String {
 
 #[derive(Parser, Debug)]
 struct Cli {
-    #[arg(help="path to tunnels definition csv file.",default_value_t=get_default_log_path())]
+    #[arg(
+        help = "Path to tunnels definition CSV file. If not provided, uses the last saved file.",
+        default_value = ""
+    )]
     log_path: String,
+}
+
+fn get_last_tunnel_file() -> Option<String> {
+    let home_dir = dirs::home_dir().expect("Unable to find home directory");
+    let pref_path = home_dir.join(PREF_FILE);
+
+    if pref_path.exists() {
+        let mut file = File::open(pref_path).ok()?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).ok()?;
+        Some(contents.trim().to_string())
+    } else {
+        None
+    }
+}
+
+fn save_last_tunnel_file(path: &str) {
+    let home_dir = dirs::home_dir().expect("Unable to find home directory");
+    let pref_path = home_dir.join(PREF_FILE);
+    let mut file = File::create(pref_path).expect("Unable to create preferences file");
+    file.write_all(path.as_bytes()).expect("Unable to save file path");
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let args = Cli::parse();
-    let app = MyApp::new(args.log_path.into());
+    let mut file_path = args.log_path.clone();
+
+    if file_path.is_empty() {
+        if let Some(last_path) = get_last_tunnel_file() {
+            file_path = last_path;
+        } else {
+            file_path = rfd::FileDialog::new()
+                .add_filter("CSV files", &["csv"])
+                .pick_file()
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_else(|| {
+                    eprintln!("No file selected, exiting.");
+                    exit(1);
+                });
+
+            save_last_tunnel_file(&file_path);
+        }
+    }
+
+    let app = MyApp::new(file_path.into());
     let options = eframe::NativeOptions::default();
     eframe::run_native("Tunnels", options, Box::new(|_cc| Box::new(app)))
 }
