@@ -2,15 +2,14 @@ use clap::Parser;
 use csv::ReaderBuilder;
 use eframe::{egui, Error};
 use egui::{FontId, TextBuffer, TextStyle};
+use regex::Regex;
 use std::collections::HashMap;
-use std::env;
 use std::env::home_dir;
-use std::fmt::format;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{exit, Child, Command, Stdio};
-use regex::Regex;
+use std::{env, fs};
 use tokio::io::AsyncWriteExt;
 
 const RDP_TEMPLATE: &str = r"
@@ -69,9 +68,15 @@ username:s:{user}
 ";
 
 struct MyApp {
+    is_edit_window_open: bool,
     tunnels: Vec<Tunnel>,
     tunnel_processes: HashMap<String, Option<Child>>, // Tracks running processes
     file_path: PathBuf,
+
+    // is_edit_window_open: bool,
+    tunnel_file_content: String,
+    // tunnel_file_path: String, // Store the path to the tunnels file
+    error_message: Option<String>, // Optional error message for the UI
 }
 
 #[derive(Clone)]
@@ -124,9 +129,12 @@ impl MyApp {
                 let tunnels = read_tunnels(valid_path.clone());
                 Self::save_last_used_file(&valid_path);
                 return Self {
+                    is_edit_window_open: false,
                     file_path: valid_path,
+                    tunnel_file_content: "".to_string(),
                     tunnels,
                     tunnel_processes: HashMap::new(),
+                    error_message: None,
                 };
             } else {
                 println!("Specified or last used file {:?} does not exist.", valid_path);
@@ -136,17 +144,23 @@ impl MyApp {
         // Fallback to empty tunnels
         println!("No valid tunnel file provided or found. Starting with an empty list.");
         Self {
+            is_edit_window_open: false,
             file_path: PathBuf::new(),
+            tunnel_file_content: "".to_string(),
             tunnels: vec![],
             tunnel_processes: HashMap::new(),
+            error_message: None,
         }
     }
 
     fn new(file_path: PathBuf) -> Self {
         Self {
+            is_edit_window_open: false,
             file_path: file_path.clone(),
+            tunnel_file_content: fs::read_to_string(&file_path).unwrap_or_else(|_| String::new()),
             tunnels:read_tunnels(file_path),
             tunnel_processes: HashMap::new(),
+            error_message: None,
         }
     }
     fn get_path_to_rdp2(&self, connection: Tunnel) -> PathBuf {
@@ -260,6 +274,40 @@ impl MyApp {
         exit(0);
     }
 
+
+    fn edit_tunnels_ui(&mut self, ui: &mut egui::Ui) -> bool {
+        let mut save_clicked = false;
+
+        ui.label("Edit the tunnels configuration:");
+        // ui.add(egui::TextEdit::multiline(&mut self.tunnel_file_content).desired_rows(10));
+        // Set a custom width for the multiline text editor
+        ui.add(egui::TextEdit::multiline(&mut self.tunnel_file_content)
+            .desired_rows(10)
+            .desired_width(500.0));  // Adjust this value as needed for the desired width
+
+
+        ui.horizontal(|ui| {
+            if ui.button("Save").clicked() {
+                // Save the content back to the file
+                if let Err(e) = std::fs::write(&self.file_path, &self.tunnel_file_content) {
+                    eprintln!("Failed to save tunnels file: {}", e);
+                } else {
+                    save_clicked = true; // Signal to close the window and refresh tunnels
+                }
+            }
+            if ui.button("Cancel").clicked() {
+                save_clicked = true; // Treat Cancel as a signal to close the window
+            }
+        });
+
+        save_clicked
+    }
+
+
+    fn save_tunnels_file(&self) -> Result<(), std::io::Error> {
+        fs::write(&self.file_path, &self.tunnel_file_content)
+    }
+
 }
 
 impl eframe::App for MyApp {
@@ -295,12 +343,36 @@ impl eframe::App for MyApp {
                         if ui.button("Refresh Tunnels").clicked() {
                             self.refresh_tunnels(); // Call the new refresh function
                         }
+                        if ui.button("Edit Tunnels").clicked() {
+                            self.is_edit_window_open = true;
+                        }
                         if ui.button("Quit").clicked() {
                             self.quit_application(frame); // Call the quit function
                         }
                     });
                 });
             });
+
+            if self.is_edit_window_open {
+                let mut is_open = self.is_edit_window_open; // Local mutable variable
+                egui::Window::new("Edit Tunnels")
+                    .open(&mut is_open)
+                    .show(ctx, |ui| {
+                        if self.edit_tunnels_ui(ui) {
+                            // If "Save" button is clicked, close the window and refresh tunnels
+                            self.is_edit_window_open = false;
+                            self.refresh_tunnels();
+                        }
+                    });
+
+                // If the window was closed manually, close the edit window and refresh tunnels
+                if !is_open {
+                    self.is_edit_window_open = false;
+                    self.refresh_tunnels();
+                }
+            }
+
+
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 egui::Grid::new("tunnel_grid").show(ui, |ui| {
