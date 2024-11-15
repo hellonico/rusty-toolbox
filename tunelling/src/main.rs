@@ -10,6 +10,7 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{exit, Child, Command, Stdio};
 use std::{env, fs};
+use egui_extras::install_image_loaders;
 use tokio::io::AsyncWriteExt;
 
 const RDP_TEMPLATE: &str = r"
@@ -77,6 +78,7 @@ struct MyApp {
     tunnel_file_content: String,
     // tunnel_file_path: String, // Store the path to the tunnels file
     error_message: Option<String>, // Optional error message for the UI
+    show_command: bool,
 }
 
 #[derive(Clone)]
@@ -135,6 +137,7 @@ impl MyApp {
                     tunnels,
                     tunnel_processes: HashMap::new(),
                     error_message: None,
+                    show_command: false,
                 };
             } else {
                 println!("Specified or last used file {:?} does not exist.", valid_path);
@@ -150,6 +153,7 @@ impl MyApp {
             tunnels: vec![],
             tunnel_processes: HashMap::new(),
             error_message: None,
+            show_command: false,
         }
     }
 
@@ -161,6 +165,7 @@ impl MyApp {
             tunnels:read_tunnels(file_path),
             tunnel_processes: HashMap::new(),
             error_message: None,
+            show_command: false,
         }
     }
     fn get_path_to_rdp(&self, connection: Tunnel) -> PathBuf {
@@ -306,11 +311,74 @@ impl MyApp {
         fs::write(&self.file_path, &self.tunnel_file_content)
     }
 
+    fn toggle_tunnel(&mut self, name: &String, command: &String, is_running: bool) {
+        if is_running {
+            self.stop_ssh_tunnel(name.as_str());
+        } else {
+            match self.start_ssh_tunnel(command.as_str()) {
+                Ok(child) => {
+                    self.tunnel_processes.insert(name.clone(), Some(child));
+                    println!("Started tunnel: {}", name);
+                }
+                Err(e) => {
+                    eprintln!("Failed to start tunnel {}: {}", name, e);
+                }
+            }
+        }
+    }
+
+    fn click_rdp(&mut self, tunnel: &Tunnel, name: &String, command: &String, is_running: bool) -> bool {
+        // Check if the tunnel is running. If not, start it.
+        if !is_running {
+            match self.start_ssh_tunnel(command) {
+                Ok(child) => {
+                    self.tunnel_processes.insert(name.clone(), Some(child));
+                    println!("Started tunnel: {}", name);
+                }
+                Err(e) => {
+                    eprintln!("Failed to start tunnel {}: {}", name, e);
+                    return true;
+                }
+            }
+        }
+
+        // Polling mechanism to wait for the tunnel to start
+        let mut retries = 5; // Number of retries
+        let delay = std::time::Duration::from_millis(200); // Delay between retries
+
+        while retries > 0 {
+            std::thread::sleep(delay);
+            if self.is_tunnel_running(&name) { // Check if the tunnel is running
+                break;
+            }
+            println!("Waiting for tunnel to start: {} ({} retries left)", name, retries);
+            retries -= 1;
+        }
+
+        // If the tunnel is still not running, exit with an error
+        if !self.is_tunnel_running(&name) {
+            eprintln!("Tunnel did not start in time for {}", name);
+            return true;
+        }
+
+        // Now proceed with starting the RDP connection
+        match self.start_rdp(tunnel.clone()) {
+            Ok(_) => {
+                println!("Started RDP connection for {}", name);
+            }
+            Err(e) => {
+                eprintln!("Failed to start RDP connection for {}: {}", name, e);
+            }
+        }
+        false
+    }
 }
 
 impl eframe::App for MyApp {
 
         fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+            install_image_loaders(ctx);
+
             let mut style = (*ctx.style()).clone();
             style.text_styles = [
                 (TextStyle::Button, FontId::proportional(10.0)),
@@ -324,14 +392,21 @@ impl eframe::App for MyApp {
             egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
                 egui::menu::bar(ui, |ui| {
                     ui.menu_button("Menu", |ui| {
-                        if ui.button("Debug").clicked() {
-                            println!("Currently running processes:");
-                            for (name, child_opt) in &self.tunnel_processes {
-                                if let Some(child) = child_opt {
-                                    println!("Tunnel: {} | PID: {}", name, child.id());
-                                }
-                            }
+                        // if ui.button("Debug").clicked() {
+                        //     println!("Currently running processes:");
+                        //     for (name, child_opt) in &self.tunnel_processes {
+                        //         if let Some(child) = child_opt {
+                        //             println!("Tunnel: {} | PID: {}", name, child.id());
+                        //         }
+                        //     }
+                        // }
+
+                        // Add the toggleable "Show Command" button
+                        let button_text = if self.show_command { "Hide Command" } else { "Show Command" };
+                        if ui.button(button_text).clicked() {
+                            self.show_command = !self.show_command;
                         }
+
                         if ui.button("Start All").clicked() {
                             self.start_all();
                         }
@@ -347,8 +422,8 @@ impl eframe::App for MyApp {
                         if ui.button("Quit").clicked() {
                             self.quit_application(frame); // Call the quit function
                         }
-                    });
 
+                    });
 
                 });
             });
@@ -376,9 +451,13 @@ impl eframe::App for MyApp {
 
             egui::CentralPanel::default().show(ctx, |ui| {
                 egui::Grid::new("tunnel_grid").show(ui, |ui| {
+                    ui.label("Status");
                     ui.label("Name");
-                    ui.label("Command");
-                    ui.label("Switch");
+                    if self.show_command {
+                        ui.label("Command");
+                    }
+
+                    // ui.label("Switch");
                     ui.label("RDP"); // New column for RDP
                     ui.end_row();
 
@@ -386,73 +465,56 @@ impl eframe::App for MyApp {
                     let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
 
                     for  tunnel @ Tunnel {name, command, user, ..} in &tunnels {
-                        ui.label(name);
-                        ui.label(command);
 
                         let is_running = self.tunnel_processes.get(name.as_str()).map_or(false, |c| c.is_some());
 
-                        if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
-                            if is_running {
-                                self.stop_ssh_tunnel(name.as_str());
-                            } else {
-                                match self.start_ssh_tunnel(command.as_str()) {
-                                    Ok(child) => {
-                                        self.tunnel_processes.insert(name.clone(), Some(child));
-                                        println!("Started tunnel: {}", name);
-                                    }
-                                    Err(e) => {
-                                        eprintln!("Failed to start tunnel {}: {}", name, e);
-                                    }
-                                }
-                            }
+                        if is_running {
+                            ui.add(
+                                egui::ImageButton::new(egui::include_image!("../src/green.png"))
+                                    // .max_size(egui::vec2(32.0, 32.0))
+                                    .rounding(10.0)
+                            ).on_hover_text("Stop")
+                                .clicked()
+                                .then(|| {
+                                    self.toggle_tunnel(name, command, is_running);
+                                });
+                        } else {
+                            ui.add(
+                                egui::ImageButton::new(egui::include_image!("../src/red.png"))
+                                    // .max_size(egui::vec2(32.0, 32.0))
+                                    .rounding(10.0)
+                            ).on_hover_text("Start")
+                                .clicked()
+                                .then(|| {
+                                    self.toggle_tunnel(name, command, is_running);
+                                });
                         }
+
+                        ui.label(name);
+                        if self.show_command {
+                            ui.label(command);
+                        }
+
+
+                        // if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
+                        //     self.toggle_tunnel(name, command, is_running);
+                        // }
 
                         if user != "" {
                             // RDP Button
-                            if ui.button("RDP").clicked() {
-                                // Check if the tunnel is running. If not, start it.
-                                if !is_running {
-                                    match self.start_ssh_tunnel(command) {
-                                        Ok(child) => {
-                                            self.tunnel_processes.insert(name.clone(), Some(child));
-                                            println!("Started tunnel: {}", name);
-                                        }
-                                        Err(e) => {
-                                            eprintln!("Failed to start tunnel {}: {}", name, e);
-                                            return;
-                                        }
-                                    }
-                                }
-
-                                // Polling mechanism to wait for the tunnel to start
-                                let mut retries = 5; // Number of retries
-                                let delay = std::time::Duration::from_millis(200); // Delay between retries
-
-                                while retries > 0 {
-                                    std::thread::sleep(delay);
-                                    if self.is_tunnel_running(&name) { // Check if the tunnel is running
-                                        break;
-                                    }
-                                    println!("Waiting for tunnel to start: {} ({} retries left)", name, retries);
-                                    retries -= 1;
-                                }
-
-                                // If the tunnel is still not running, exit with an error
-                                if !self.is_tunnel_running(&name) {
-                                    eprintln!("Tunnel did not start in time for {}", name);
-                                    return;
-                                }
-
-                                // Now proceed with starting the RDP connection
-                                match self.start_rdp(tunnel.clone()) {
-                                    Ok(_) => {
-                                        println!("Started RDP connection for {}", name);
-                                    }
-                                    Err(e) => {
-                                        eprintln!("Failed to start RDP connection for {}: {}", name, e);
-                                    }
-                                }
-                            }
+                            ui.add(
+                                egui::ImageButton::new(egui::include_image!("../src/remote.png"))
+                                    // .max_size(egui::vec2(32.0, 32.0))
+                                    .rounding(10.0)
+                            ).on_hover_text("RDP")
+                                .clicked()
+                                .then(|| {
+                                    // self.toggle_tunnel(name, command, is_running);
+                                    self.click_rdp(tunnel, &name, command, is_running)
+                                });
+                            // if ui.button("RDP").clicked() {
+                            //     if self.click_rdp(tunnel, &name, command, is_running) { return; }
+                            // }
                         }
 
 

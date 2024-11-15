@@ -6729,6 +6729,7 @@ dependencies = [
  "dirs",
  "eframe 0.29.1",
  "egui 0.29.1",
+ "egui_extras",
  "env_logger",
  "log",
  "regex",
