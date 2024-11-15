@@ -163,7 +163,7 @@ impl MyApp {
             error_message: None,
         }
     }
-    fn get_path_to_rdp2(&self, connection: Tunnel) -> PathBuf {
+    fn get_path_to_rdp(&self, connection: Tunnel) -> PathBuf {
         let rdp_file_content = (RDP_TEMPLATE.replace("{user}", &connection.user)).as_str()
             .replace("{port}", &connection.port);
         println!("{}", rdp_file_content);
@@ -182,7 +182,7 @@ impl MyApp {
 
     #[cfg(target_os = "linux")]
     fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
-        let command = format!("/usr/bin/remmina -c {:?}", self.get_path_to_rdp2(connection));
+        let command = format!("/usr/bin/remmina -c {:?}", self.get_path_to_rdp(connection));
         println!("{}", &command.to_string());
         Command::new("bash")
             .args(&["-c", &command])
@@ -193,7 +193,7 @@ impl MyApp {
     fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
         // Retrieve the current username from the environment variable
         // let user = env::var("USERNAME").unwrap_or_else(|_| "USER".to_string()); // Fallback to "USER" if not found
-        let command = format!("MSTSC {:}", self.get_path_to_rdp2(connection).to_str().unwrap());
+        let command = format!("MSTSC {:}", self.get_path_to_rdp(connection).to_str().unwrap());
         Command::new("cmd")
             .args(&["/C", &command])
             .spawn()
@@ -201,7 +201,7 @@ impl MyApp {
 
     #[cfg(target_os = "macos")]
     fn start_rdp(&self, connection: Tunnel) -> std::io::Result<Child> {
-        let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {:?}", self.get_path_to_rdp2(connection));
+        let command = format!("open -a /Applications/Microsoft\\ Remote\\ Desktop.app {:?}", self.get_path_to_rdp(connection));
         Command::new("bash")
             .args(&["-c", &command])
             .spawn()
@@ -211,13 +211,10 @@ impl MyApp {
         self.tunnel_processes.contains_key(name)
     }
 
-    fn get_parent(&self) -> String {
-        let parent = self.file_path.as_path().parent().unwrap().display().to_string();
-        parent
-    }
-    fn get_path_to_rdp(&self, connection: Tunnel) -> String {
-        format!("{}/{}.rdp", self.get_parent(), connection.name)
-    }
+    // fn get_parent(&self) -> String {
+    //     let parent = self.file_path.as_path().parent().unwrap().display().to_string();
+    //     parent
+    // }
 
 
     fn start_ssh_tunnel(&self, command: &str) -> std::io::Result<Child> {
@@ -351,6 +348,8 @@ impl eframe::App for MyApp {
                             self.quit_application(frame); // Call the quit function
                         }
                     });
+
+
                 });
             });
 
@@ -474,7 +473,9 @@ fn get_port(input: &str) -> &str {
         } else {""}
     } else {""}
 }
-fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> {
+fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> { // Skip lines starting with #;
+
+    //ReaderBuilder::from_reader()
     let mut rdr = ReaderBuilder::new().from_path(file_path).unwrap();
     let mut tunnels = Vec::new();
     let mut next_port = 3389; // Start with the base port
@@ -484,6 +485,11 @@ fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> {
 
         // Extract the name and user
         let name = record.get(0).unwrap_or("").to_string();
+
+        if name.starts_with("#") {
+            continue;
+        }
+
         let user = record.get(2).unwrap_or("").to_string();
 
         // Generate the command if empty
@@ -580,5 +586,7 @@ async fn main() -> Result<(), Error> {
 
     let app = MyApp::new(file_path.into());
     let options = eframe::NativeOptions::default();
-    eframe::run_native("Tunnels", options, Box::new(|_cc| Box::new(app)))
+    eframe::run_native("Tunnels",
+                       options,
+                       Box::new(|_cc| Ok(Box::new(app))))
 }
