@@ -1,0 +1,12 @@
+[package]
+name = "app-cli-show-usb-devices"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rusb = "0.9.4"
+eframe = "0.29.1"
+#
+#egui = "0.29.1"
+#egui_extras="0.29.1"
+#egui-winit = "0.29.1"
