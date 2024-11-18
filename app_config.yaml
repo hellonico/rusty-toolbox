@@ -1,0 +1,8 @@
+input_folder: /Volumes/518/SCREENS2
+output_folder: /Volumes/518/SCREENS3
+video_format: mp4
+audio_format: aac
+file_extension: mov
+delete_original: false
+skip_if_exists: true
+encoding: libx265
