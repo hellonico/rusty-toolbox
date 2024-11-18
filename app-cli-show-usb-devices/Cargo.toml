@@ -6,6 +6,8 @@ edition = "2021"
 [dependencies]
 rusb = "0.9.4"
 eframe = "0.29.1"
+tokio = { version = "1.41.1", features = ["full"] }
+btleplug = "0.11.6"  # For Bluetooth device discovery
 #
 #egui = "0.29.1"
 #egui_extras="0.29.1"

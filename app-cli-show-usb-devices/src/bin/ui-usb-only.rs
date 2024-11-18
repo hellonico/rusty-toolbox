@@ -1,12 +1,5 @@
+use app_cli_show_usb_devices::usb::fetch_usb_devices;
 use eframe::{egui, Error};
-use rusb::{Context, Device, UsbContext};
-
-// fn main() {
-//     let native_options = eframe::NativeOptions::default();
-//     eframe::run_native("My egui App", native_options, Box::new(|cc| Box::new(MyEguiApp::new(cc))));
-// }
-
-// struct MyEguiApp {}
 
 struct UsbApp {
     devices: Vec<String>,
@@ -42,34 +35,8 @@ impl eframe::App for UsbApp {
         });
     }
 }
-
-fn fetch_usb_devices() -> rusb::Result<Vec<String>> {
-    let context = Context::new()?;
-    let devices = context.devices()?;
-    let mut device_list = Vec::new();
-
-    for device in devices.iter() {
-        if let Ok(info) = format_device_info(&device) {
-            device_list.push(info);
-        }
-    }
-
-    Ok(device_list)
-}
-
-fn format_device_info(device: &Device<Context>) -> rusb::Result<String> {
-    let descriptor = device.device_descriptor()?;
-
-    Ok(format!(
-        "Bus {:03} Device {:03} ID {:04x}:{:04x}",
-        device.bus_number(),
-        device.address(),
-        descriptor.vendor_id(),
-        descriptor.product_id()
-    ))
-}
-
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let app = UsbApp::default();
     let options = eframe::NativeOptions::default();
     let app = UsbApp::default();
