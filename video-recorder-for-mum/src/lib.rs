@@ -73,7 +73,7 @@ impl RecordingApp {
                     .arg("-i")
                     .arg("1:0") // Adjust devices for your system
                     .arg("-framerate")
-                    .arg("25")
+                    .arg("30")
                     .arg(&output_file) // Use dynamically generated filename
                     .stdin(Stdio::piped()) // Open stdin for sending commands
                     .spawn()
