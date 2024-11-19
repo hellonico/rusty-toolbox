@@ -1,9 +1,9 @@
+use app_cli_convert_videos::encode_video;
 use clap::{Arg, Command as ClapCommand};
 use indicatif::{ProgressBar, ProgressStyle};
+use lib_egui_utils::{generate_output_path, list_files_from_dir2, SortBy};
 use std::fs;
-use std::fs::OpenOptions;
-use std::io::Read;
-use std::process::Command;
+use std::path::PathBuf;
 
 fn main() {
     let matches = ClapCommand::new("Video Encoder")
@@ -68,12 +68,7 @@ fn main() {
     fs::create_dir_all(output).expect("Failed to create output directory");
 
     // Get a list of input files
-    let files: Vec<_> = fs::read_dir(input)
-        .expect("Failed to read input directory")
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().map_or(false, |ext| extension.eq_ignore_ascii_case(ext.to_str().unwrap())))
-        .collect();
+    let files: Vec<_> = list_files_from_dir2(input, extension, SortBy::LastUpdated, true);
 
     let pb = ProgressBar::new(files.len() as u64);
     pb.set_style(
@@ -82,50 +77,16 @@ fn main() {
             .progress_chars("#>-"),
     );
 
-    // Create or append to the log file
-    let log_file_path = "ffmpeg.log";
-    let mut log_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(log_file_path)
-        .expect("Failed to open or create log file");
-
-    for file in files {
-        let filename = file.file_name().unwrap().to_string_lossy();
-        let output_file = format!(
-            "{}/{}.{}",
-            output,
-            file.file_stem().unwrap().to_string_lossy(),
-            video_format
-        );
+    for filename in files {
+        let file = PathBuf::from(filename.clone());
+        let output_file = generate_output_path(&filename.clone(), output.into(), video_format.into());
 
         pb.set_message(format!("Encoding: {}", filename));
-        let status = Command::new("ffmpeg")
-            .args([
-                "-y", // Force overwrite
-                "-hwaccel", "auto",
-                "-i", file.to_str().unwrap(),
-                "-c:v", "libx265",
-                "-crf", "26",
-                "-preset", "fast",
-                "-c:a", audio_format,
-                &output_file,
-            ])
-            .stdout(std::process::Stdio::null()) // Suppress stdout
-            .stderr(std::process::Stdio::piped()) // Capture stderr for logging
-            .spawn()
-            .and_then(|mut child| {
-                // Capture stderr and write it to the log file
-                if let Some(stderr) = child.stderr.take() {
-                    std::io::copy(&mut stderr.take(1024 * 1024), &mut log_file)
-                        .expect("Failed to write ffmpeg output to log file");
-                }
-                child.wait()
-            })
-            .expect("Failed to execute ffmpeg");
 
-        if !status.success() {
-            eprintln!("Failed to encode file: {}", filename);
+        let status = encode_video(file.clone(), &String::from("libx265"), &output_file, audio_format);
+
+        if let Err(e) = status {
+            eprintln!("Failed to run FFmpeg for {:?}: {}", file, e);
             continue;
         }
 
@@ -137,5 +98,4 @@ fn main() {
     }
 
     pb.finish_with_message("Encoding completed");
-    println!("FFmpeg logs have been written to {}", log_file_path);
 }

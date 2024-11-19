@@ -1,43 +1,16 @@
-use eframe::egui::{Response, ViewportBuilder};
-use eframe::{egui, NativeOptions};
+use app_cli_convert_videos::{encode_video, AppConfig, FileStat};
+use eframe::egui;
+use eframe::egui::Response;
 use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
 use egui_remixicon::{add_to_fonts, icons};
-use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon, list_files_from_dir, my_default_options};
-use serde::{Deserialize, Serialize};
+use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, list_files_from_dir2, my_default_options, SortBy};
 use std::collections::VecDeque;
 use std::fs::{self};
-use std::io::{self};
-use std::path::Path;
-use std::process::Command;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use thread::sleep;
-
-// Struct for configuration
-#[derive(Serialize, Deserialize, Default)]
-struct AppConfig {
-    input_folder: String,
-    output_folder: String,
-    video_format: String,
-    audio_format: String,
-    file_extension: String,
-    delete_original: bool,
-    skip_if_exists: bool,
-    encoding: String,
-}
-
-impl AppConfig {
-    fn save(&self, path: &str) -> Result<(), io::Error> {
-        let yaml = serde_yaml::to_string(self).unwrap();
-        fs::write(path, yaml)
-    }
-
-    fn load(path: &str) -> Result<Self, io::Error> {
-        let yaml = fs::read_to_string(path)?;
-        serde_yaml::from_str(&yaml).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-    }
-}
 
 // Main application structure
 struct MyApp {
@@ -116,7 +89,8 @@ impl MyApp {
     }
 
     fn enqueue_jobs(&mut self) {
-        let files = list_files_from_dir(&self.input_folder, &self.file_extension);
+        //let files = list_files_from_dir(&self.input_folder, &self.file_extension);
+        let files = list_files_from_dir2(&self.input_folder, &self.file_extension, SortBy::LastUpdated, true);
 
         let mut job_queue = self.job_queue.lock().unwrap();
         job_queue.clear();
@@ -127,7 +101,6 @@ impl MyApp {
         // Reset file stats
         self.file_stats.lock().unwrap().clear();
     }
-
 
     fn start_encoding(&mut self) {
         let is_encoding = Arc::clone(&self.is_encoding);
@@ -169,18 +142,8 @@ impl MyApp {
                     });
                 }
 
-                // Run FFmpeg command
-                let status = Command::new("ffmpeg")
-                    .arg("-i")
-                    .arg(&file)
-                    .arg("-c:v")
-                    .arg(&encoding)
-                    .arg("-preset")
-                    .arg("fast")
-                    .arg("-c:a")
-                    .arg("aac")
-                    .arg(&output_file)
-                    .status();
+                let status =
+                    encode_video(PathBuf::from(&file), &encoding, &output_file, &String::from("aac"));
 
                 if let Err(e) = status {
                     eprintln!("Failed to run FFmpeg for {}: {}", file, e);
@@ -211,6 +174,7 @@ impl MyApp {
         });
     }
 
+
     fn update_progress(&mut self) {
         let queue_size = self.job_queue.lock().unwrap().len();
         self.progress = if self.total_jobs > 0 {
@@ -222,13 +186,6 @@ impl MyApp {
 
 }
 
-struct FileStat {
-    input_file: String,
-    input_size: f64,
-    output_size: Option<f64>,
-    reduction: Option<f64>,
-    elapsed_time: Option<f64>, // Time in seconds
-}
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.update_progress();

@@ -1,8 +1,10 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use eframe::egui::{IconData, ViewportBuilder};
 use eframe::{egui, NativeOptions};
 use image::GenericImageView;
+use SortBy::Size;
 
 pub fn format_f64_or_dash(stat: Option<f64>) -> String {
     stat.map(|t| format!("{:.2}", t)).unwrap_or_else(|| "-".to_string())
@@ -102,4 +104,73 @@ pub fn list_files_from_dir(input_folder: &String, extension_filter: &String) -> 
         })
         .map(|entry| entry.path().to_string_lossy().to_string())
         .collect::<Vec<_>>()
+}
+
+pub enum SortBy {
+    FileName,
+    Size,
+    LastUpdated,
+}
+
+pub fn list_files_from_dir2(
+    input_folder: &String,
+    extension_filter: &String,
+    sort_by: SortBy,
+    ascending: bool,
+) -> Vec<String> {
+    // Attempt to read the directory
+    let files = match fs::read_dir(input_folder) {
+        Ok(read_dir) => read_dir,
+        Err(_) => {
+            eprintln!("Directory not found: {}", input_folder);
+            return Vec::new(); // Return an empty vector if the folder does not exist
+        }
+    };
+
+    // Collect valid entries into a vector
+    let mut file_entries: Vec<(PathBuf, u64, SystemTime)> = files
+        .filter_map(|entry| entry.ok())
+        .filter_map(|entry| {
+            let metadata = entry.metadata().ok()?;
+            let modified = metadata.modified().ok()?;
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+
+            if file_name.starts_with('.') {
+                return None; // Skip dot files
+            }
+
+            if entry.path().extension().map_or(false, |ext| {
+                ext.to_str().unwrap().eq_ignore_ascii_case(extension_filter)
+            }) {
+                Some((entry.path(), metadata.len(), modified))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Sort the vector based on the specified criteria
+    match sort_by {
+        SortBy::FileName => {
+            file_entries.sort_by(|a, b| a.0.file_name().cmp(&b.0.file_name()));
+        }
+        Size => {
+            file_entries.sort_by(|a, b| a.1.cmp(&b.1));
+        }
+        SortBy::LastUpdated => {
+            file_entries.sort_by(|a, b| a.2.cmp(&b.2));
+        }
+    }
+
+    // Reverse the order if descending
+    if !ascending {
+        file_entries.reverse();
+    }
+
+    // Map the sorted entries to their string paths
+    file_entries
+        .into_iter()
+        .map(|(path, _, _)| path.to_string_lossy().to_string())
+        .collect()
 }
