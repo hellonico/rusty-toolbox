@@ -6371,6 +6371,7 @@ dependencies = [
  "egui-winit 0.29.1",
  "egui_extras",
  "get_if_addrs",
+ "lib_egui_utils",
  "lib_os_utils",
  "sysinfo",
 ]
@@ -7110,6 +7111,7 @@ dependencies = [
  "egui 0.29.1",
  "egui_extras",
  "image 0.24.9",
+ "lib_egui_utils",
  "notify-rust",
  "winapi 0.3.9",
 ]

@@ -12,7 +12,7 @@ use std::process::{exit, Child, Command, Stdio};
 use std::{env, fs};
 use egui_extras::install_image_loaders;
 use tokio::io::AsyncWriteExt;
-use lib_egui_utils::icon;
+use lib_egui_utils::{icon, my_default_options};
 
 const RDP_TEMPLATE: &str = r"
 screen mode id:i:2
@@ -84,10 +84,10 @@ struct MyApp {
 
 #[derive(Clone)]
 struct Tunnel {
-    pub name:String,
-    pub command:String,
-    pub user:String,
-    pub port:String
+    pub name: String,
+    pub command: String,
+    pub user: String,
+    pub port: String,
 }
 
 
@@ -95,7 +95,6 @@ const PREF_FILE: &str = ".tunnels_pref";
 
 
 impl MyApp {
-
     /// Load the last used tunnel file from the preference file
     fn get_last_used_file() -> Option<PathBuf> {
         if let Some(home_dir) = home_dir() {
@@ -163,7 +162,7 @@ impl MyApp {
             is_edit_window_open: false,
             file_path: file_path.clone(),
             tunnel_file_content: fs::read_to_string(&file_path).unwrap_or_else(|_| String::new()),
-            tunnels:read_tunnels(file_path),
+            tunnels: read_tunnels(file_path),
             tunnel_processes: HashMap::new(),
             error_message: None,
             show_command: false,
@@ -243,7 +242,7 @@ impl MyApp {
     }
 
     fn start_all(&mut self) {
-        for Tunnel {name, command, ..} in &self.tunnels {
+        for Tunnel { name, command, .. } in &self.tunnels {
             if !self.tunnel_processes.contains_key(name) {
                 match self.start_ssh_tunnel(command) {
                     Ok(child) => {
@@ -376,155 +375,150 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        install_image_loaders(ctx);
 
-        fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-            install_image_loaders(ctx);
+        let mut style = (*ctx.style()).clone();
+        style.text_styles = [
+            (TextStyle::Button, FontId::proportional(10.0)),
+            (TextStyle::Heading, FontId::proportional(11.0)),
+            (TextStyle::Body, FontId::proportional(10.0)),
+            (TextStyle::Monospace, FontId::proportional(10.0)),
+        ]
+            .into();
+        ctx.set_style(style);
 
-            let mut style = (*ctx.style()).clone();
-            style.text_styles = [
-                (TextStyle::Button, FontId::proportional(10.0)),
-                (TextStyle::Heading, FontId::proportional(11.0)),
-                (TextStyle::Body, FontId::proportional(10.0)),
-                (TextStyle::Monospace, FontId::proportional(10.0)),
-            ]
-                .into();
-            ctx.set_style(style);
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("Menu", |ui| {
+                    // if ui.button("Debug").clicked() {
+                    //     println!("Currently running processes:");
+                    //     for (name, child_opt) in &self.tunnel_processes {
+                    //         if let Some(child) = child_opt {
+                    //             println!("Tunnel: {} | PID: {}", name, child.id());
+                    //         }
+                    //     }
+                    // }
 
-            egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-                egui::menu::bar(ui, |ui| {
-                    ui.menu_button("Menu", |ui| {
-                        // if ui.button("Debug").clicked() {
-                        //     println!("Currently running processes:");
-                        //     for (name, child_opt) in &self.tunnel_processes {
-                        //         if let Some(child) = child_opt {
-                        //             println!("Tunnel: {} | PID: {}", name, child.id());
-                        //         }
-                        //     }
-                        // }
+                    // Add the toggleable "Show Command" button
+                    let button_text = if self.show_command { "Hide Command" } else { "Show Command" };
+                    if ui.button(button_text).clicked() {
+                        self.show_command = !self.show_command;
+                    }
 
-                        // Add the toggleable "Show Command" button
-                        let button_text = if self.show_command { "Hide Command" } else { "Show Command" };
-                        if ui.button(button_text).clicked() {
-                            self.show_command = !self.show_command;
-                        }
-
-                        if ui.button("Start All").clicked() {
-                            self.start_all();
-                        }
-                        if ui.button("Stop All").clicked() {
-                            self.stop_all();
-                        }
-                        if ui.button("Refresh Tunnels").clicked() {
-                            self.refresh_tunnels(); // Call the new refresh function
-                        }
-                        if ui.button("Edit Tunnels").clicked() {
-                            self.is_edit_window_open = true;
-                        }
-                        if ui.button("Quit").clicked() {
-                            self.quit_application(frame); // Call the quit function
-                        }
-
-                    });
-
+                    if ui.button("Start All").clicked() {
+                        self.start_all();
+                    }
+                    if ui.button("Stop All").clicked() {
+                        self.stop_all();
+                    }
+                    if ui.button("Refresh Tunnels").clicked() {
+                        self.refresh_tunnels(); // Call the new refresh function
+                    }
+                    if ui.button("Edit Tunnels").clicked() {
+                        self.is_edit_window_open = true;
+                    }
+                    if ui.button("Quit").clicked() {
+                        self.quit_application(frame); // Call the quit function
+                    }
                 });
             });
+        });
 
-            if self.is_edit_window_open {
-                let mut is_open = self.is_edit_window_open; // Local mutable variable
-                egui::Window::new("Edit Tunnels")
-                    .open(&mut is_open)
-                    .show(ctx, |ui| {
-                        if self.edit_tunnels_ui(ui) {
-                            // If "Save" button is clicked, close the window and refresh tunnels
-                            self.is_edit_window_open = false;
-                            self.refresh_tunnels();
-                        }
-                    });
+        if self.is_edit_window_open {
+            let mut is_open = self.is_edit_window_open; // Local mutable variable
+            egui::Window::new("Edit Tunnels")
+                .open(&mut is_open)
+                .show(ctx, |ui| {
+                    if self.edit_tunnels_ui(ui) {
+                        // If "Save" button is clicked, close the window and refresh tunnels
+                        self.is_edit_window_open = false;
+                        self.refresh_tunnels();
+                    }
+                });
 
-                // If the window was closed manually, close the edit window and refresh tunnels
-                if !is_open {
-                    self.is_edit_window_open = false;
-                    self.refresh_tunnels();
-                }
+            // If the window was closed manually, close the edit window and refresh tunnels
+            if !is_open {
+                self.is_edit_window_open = false;
+                self.refresh_tunnels();
             }
-
-
-
-            egui::CentralPanel::default().show(ctx, |ui| {
-                egui::Grid::new("tunnel_grid").show(ui, |ui| {
-                    ui.label("Status");
-                    ui.label("Name");
-                    if self.show_command {
-                        ui.label("Command");
-                    }
-
-                    // ui.label("Switch");
-                    ui.label("RDP"); // New column for RDP
-                    ui.end_row();
-
-                    // Collect names of tunnels first to avoid borrowing issues
-                    let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
-
-                    for  tunnel @ Tunnel {name, command, user, ..} in &tunnels {
-
-                        let is_running = self.tunnel_processes.get(name.as_str()).map_or(false, |c| c.is_some());
-
-                        if is_running {
-                            ui.add(
-                                egui::ImageButton::new(egui::include_image!("../src/green.png"))
-                                    // .max_size(egui::vec2(32.0, 32.0))
-                                    .rounding(10.0)
-                            ).on_hover_text("Stop")
-                                .clicked()
-                                .then(|| {
-                                    self.toggle_tunnel(name, command, is_running);
-                                });
-                        } else {
-                            ui.add(
-                                egui::ImageButton::new(egui::include_image!("../src/red.png"))
-                                    // .max_size(egui::vec2(32.0, 32.0))
-                                    .rounding(10.0)
-                            ).on_hover_text("Start")
-                                .clicked()
-                                .then(|| {
-                                    self.toggle_tunnel(name, command, is_running);
-                                });
-                        }
-
-                        ui.label(name);
-                        if self.show_command {
-                            ui.label(command);
-                        }
-
-
-                        // if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
-                        //     self.toggle_tunnel(name, command, is_running);
-                        // }
-
-                        if user != "" {
-                            // RDP Button
-                            ui.add(
-                                egui::ImageButton::new(egui::include_image!("../src/remote.png"))
-                                    // .max_size(egui::vec2(32.0, 32.0))
-                                    .rounding(10.0)
-                            ).on_hover_text("RDP")
-                                .clicked()
-                                .then(|| {
-                                    // self.toggle_tunnel(name, command, is_running);
-                                    self.click_rdp(tunnel, &name, command, is_running)
-                                });
-                            // if ui.button("RDP").clicked() {
-                            //     if self.click_rdp(tunnel, &name, command, is_running) { return; }
-                            // }
-                        }
-
-
-                        ui.end_row();
-                    }
-                });
-            });
         }
+
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::Grid::new("tunnel_grid").show(ui, |ui| {
+                ui.label("Status");
+                ui.label("Name");
+                if self.show_command {
+                    ui.label("Command");
+                }
+
+                // ui.label("Switch");
+                ui.label("RDP"); // New column for RDP
+                ui.end_row();
+
+                // Collect names of tunnels first to avoid borrowing issues
+                let tunnels = self.tunnels.clone(); // Clone the tunnels for iteration
+
+                for tunnel @ Tunnel { name, command, user, .. } in &tunnels {
+                    let is_running = self.tunnel_processes.get(name.as_str()).map_or(false, |c| c.is_some());
+
+                    if is_running {
+                        ui.add(
+                            egui::ImageButton::new(egui::include_image!("../src/green.png"))
+                                // .max_size(egui::vec2(32.0, 32.0))
+                                .rounding(10.0)
+                        ).on_hover_text("Stop")
+                            .clicked()
+                            .then(|| {
+                                self.toggle_tunnel(name, command, is_running);
+                            });
+                    } else {
+                        ui.add(
+                            egui::ImageButton::new(egui::include_image!("../src/red.png"))
+                                // .max_size(egui::vec2(32.0, 32.0))
+                                .rounding(10.0)
+                        ).on_hover_text("Start")
+                            .clicked()
+                            .then(|| {
+                                self.toggle_tunnel(name, command, is_running);
+                            });
+                    }
+
+                    ui.label(name);
+                    if self.show_command {
+                        ui.label(command);
+                    }
+
+
+                    // if ui.button(if is_running { "Stop" } else { "Start" }).clicked() {
+                    //     self.toggle_tunnel(name, command, is_running);
+                    // }
+
+                    if user != "" {
+                        // RDP Button
+                        ui.add(
+                            egui::ImageButton::new(egui::include_image!("../src/remote.png"))
+                                // .max_size(egui::vec2(32.0, 32.0))
+                                .rounding(10.0)
+                        ).on_hover_text("RDP")
+                            .clicked()
+                            .then(|| {
+                                // self.toggle_tunnel(name, command, is_running);
+                                self.click_rdp(tunnel, &name, command, is_running)
+                            });
+                        // if ui.button("RDP").clicked() {
+                        //     if self.click_rdp(tunnel, &name, command, is_running) { return; }
+                        // }
+                    }
+
+
+                    ui.end_row();
+                }
+            });
+        });
     }
+}
 
 fn get_port(input: &str) -> &str {
     let re = Regex::new(r"-L (\d+):").unwrap();
@@ -533,8 +527,8 @@ fn get_port(input: &str) -> &str {
         if let Some(port) = captures.get(1) {
             // println!("Captured value: {}", port.as_str())
             port.as_str()
-        } else {""}
-    } else {""}
+        } else { "" }
+    } else { "" }
 }
 fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> { // Skip lines starting with #;
 
@@ -585,8 +579,6 @@ fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> { // Skip lines starting with
 
     tunnels
 }
-
-
 
 
 fn get_default_log_path() -> String {
@@ -648,15 +640,10 @@ async fn main() -> Result<(), Error> {
     }
 
     let app = MyApp::new(file_path.into());
-    // let options = eframe::NativeOptions::default();
-    let app_icon = icon(include_bytes!("icon.png"));
-    let options = NativeOptions {
-        viewport: ViewportBuilder::default()
-            .with_close_button(true)
-            .with_inner_size(egui::Vec2::new(400.0, 300.0))
-            .with_icon(app_icon),
-        ..Default::default()
-    };
+
+    let options =
+        my_default_options(400.0, 300.0, include_bytes!("icon.png"));
+
     eframe::run_native("Tunnels",
                        options,
                        Box::new(|_cc| Ok(Box::new(app))))

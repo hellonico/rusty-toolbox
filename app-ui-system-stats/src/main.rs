@@ -2,7 +2,7 @@ use egui::{Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{Column, TableBuilder};
 use get_if_addrs::get_if_addrs;
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
-
+use lib_egui_utils::my_default_options;
 use lib_os_utils::location::get_location;
 use lib_os_utils::serial::get_serial_number;
 use lib_os_utils::wifi::get_wifi_ssid;
@@ -24,7 +24,10 @@ fn get_ip_address() -> Option<String> {
 fn main() {
     let mut sys = System::new_all();
     sys.refresh_all();
-    let options = eframe::NativeOptions::default();
+
+    let options =
+        my_default_options(600.0, 600.0, include_bytes!("icon.png"));
+
     eframe::run_native(
         "System Info Viewer",
         options,

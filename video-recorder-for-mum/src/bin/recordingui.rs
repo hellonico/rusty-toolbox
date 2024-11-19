@@ -1,6 +1,7 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, App};
 use egui_extras::install_image_loaders;
+use lib_egui_utils::my_default_options;
 use video_recorder_for_mum::RecordingApp;
 
 
@@ -79,21 +80,24 @@ impl App for RecordingAppUI {
 }
 
 fn main() {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id(String::from("mom-screenrecorder"))
-            .with_inner_size([500.0,300.0])
-            .with_resizable(false)
-            // .with_taskbar(false)
-            .with_decorations(true)
-            .with_position([0.0, 0.0])
-            .with_window_level(egui::WindowLevel::AlwaysOnTop),
-        ..Default::default()
-    };
+    // let options = eframe::NativeOptions {
+    //     viewport: egui::ViewportBuilder::default()
+    //         .with_app_id(String::from("mom-screenrecorder"))
+    //         .with_inner_size([500.0,300.0])
+    //         .with_resizable(false)
+    //         // .with_taskbar(false)
+    //         .with_decorations(true)
+    //         .with_position([0.0, 0.0])
+    //         .with_window_level(egui::WindowLevel::AlwaysOnTop),
+    //     ..Default::default()
+    // };
+    let native_options =
+        my_default_options(500.0, 300.0, include_bytes!("../mafalda.png"));
+
 
     eframe::run_native(
         "Screen Recorder for Mum", // Updated app name
-        options,
+        native_options,
         //Box::new(|_cc| Box::new(RecordingAppUI::default())),
         Box::new(|_cc| Ok(Box::new(RecordingAppUI::default()) as Box<dyn eframe::App>)),
     )

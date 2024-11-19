@@ -2,7 +2,7 @@ use eframe::egui::{Response, ViewportBuilder};
 use eframe::{egui, NativeOptions};
 use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
 use egui_remixicon::{add_to_fonts, icons};
-use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon, list_files_from_dir};
+use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon, list_files_from_dir, my_default_options};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs::{self};
@@ -352,13 +352,9 @@ impl eframe::App for MyApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    let app_icon = icon(include_bytes!("../../icon.png"));
-    let native_options = NativeOptions {
-        viewport: ViewportBuilder::default()
-            .with_close_button(true)
-            .with_inner_size(egui::Vec2::new(800.0, 500.0))
-            .with_icon(app_icon),
-            ..Default::default()
-    };
+
+    let native_options =
+        my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
+
     eframe::run_native("BeeVEe - Batch Video Encoder", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
 }

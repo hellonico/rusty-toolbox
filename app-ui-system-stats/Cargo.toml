@@ -13,3 +13,4 @@ get_if_addrs = "0.5.3"
 #wifiscanner = "0.5.1"
 lib_os_utils = { path = "../lib-os-utils" }
 battery = "0.7.8"
+lib_egui_utils = { path = "../lib-egui-utils" }

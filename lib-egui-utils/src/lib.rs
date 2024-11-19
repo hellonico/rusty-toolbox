@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
-use eframe::egui::IconData;
+use eframe::egui::{IconData, ViewportBuilder};
+use eframe::{egui, NativeOptions};
 use image::GenericImageView;
 
 pub fn format_f64_or_dash(stat: Option<f64>) -> String {
@@ -62,6 +63,19 @@ pub fn icon(icon_bytes: &[u8]) -> IconData {
     };
     icon
 }
+
+pub fn my_default_options(x: f32, y: f32, bytes: &[u8]) -> NativeOptions {
+    let app_icon = icon(bytes);
+    let options = NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_close_button(true)
+            .with_inner_size(egui::Vec2::new(x, y))
+            .with_icon(app_icon),
+        ..Default::default()
+    };
+    options
+}
+
 
 
 
