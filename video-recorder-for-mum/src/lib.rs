@@ -1,11 +1,12 @@
+use chrono::Local;
 use std::io::Write;
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
-use std::{env, io, thread};
-use std::os::windows::process::CommandExt;
-use std::path::Path;
 use std::time::{Duration, Instant};
-use chrono::Local;
+use std::{env, io, thread};
+#[cfg(target_os = "windows")]
 use winapi::um::winbase::DETACHED_PROCESS;
 
 pub struct RecordingApp {
@@ -26,15 +27,11 @@ impl Default for RecordingApp {
 
 impl RecordingApp {
     pub fn open_containing_folder(output_file: &String) {
-        // let folder_path = Path::new(output_file)
-        //     .parent()
-        //     .unwrap();
-        //
         let folder_path = env::current_dir().unwrap().display().to_string();
 
         #[cfg(target_os = "macos")]
         Command::new("open")
-            .arg(folder_path)
+            .arg(folder_path.clone())
             .spawn()
             .expect("Failed to open folder");
 

@@ -7062,6 +7062,7 @@ name = "video-recorder-for-mum"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "clap",
  "config",
  "eframe 0.29.1",
  "egui 0.29.1",
