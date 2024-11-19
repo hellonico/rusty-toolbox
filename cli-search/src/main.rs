@@ -22,14 +22,19 @@ fn main() {
 
     // Recursively search for .java files
     if let Err(err) = visit_dirs(Path::new(folder), &mut |file_path| {
+        let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
+
+        // Exclude files with patterns in their names
+        if excludes.iter().any(|&ex| file_name.contains(ex)) {
+            return; // Skip this file
+        }
+
         if file_path.extension().unwrap_or_default() == "java" {
             if let Ok(file) = fs::File::open(file_path) {
                 let reader = io::BufReader::new(file);
                 for (line_num, line) in reader.lines().enumerate() {
                     if let Ok(content) = line {
-                        if content.contains(search)
-                            && !excludes.iter().any(|&ex| content.contains(ex))
-                        {
+                        if content.contains(search) {
                             total_lines += 1;
                             csv_output.push(format!(
                                 "{},{},{}",
