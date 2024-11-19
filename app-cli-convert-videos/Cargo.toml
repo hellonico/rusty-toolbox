@@ -12,3 +12,4 @@ serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
 image = "0.25.5"
 egui-remixicon = "0.29.1"
+lib_egui_utils = { path = "../lib-egui-utils" }

@@ -1,8 +1,8 @@
-use eframe::egui::{IconData, ViewportBuilder};
+use eframe::egui::ViewportBuilder;
 use eframe::{egui, NativeOptions};
 use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
 use egui_remixicon::{add_to_fonts, icons};
-use image::GenericImageView;
+use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs::{self};
@@ -11,6 +11,8 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Duration;
+use thread::sleep;
 
 // Struct for configuration
 #[derive(Serialize, Deserialize, Default)]
@@ -195,6 +197,7 @@ impl MyApp {
                     eprintln!("Failed to run FFmpeg for {}: {}", file, e);
                     continue;
                 }
+                sleep(Duration::from_secs(1));
 
                 let output_size = get_file_size_in_gb(&output_file);
                 let reduction = (input_size - output_size).max(0.0);
@@ -228,29 +231,6 @@ impl MyApp {
         };
     }
 
-    fn format_f64_or_dash(stat: Option<f64>) -> String {
-        stat.map(|t| format!("{:.2}", t)).unwrap_or_else(|| "-".to_string())
-    }
-}
-
-fn generate_output_path(file: &String, output_folder:String, video_format:String) -> String{
-    format!(
-        "{}/{}.{}",
-        output_folder,
-        Path::new(&file)
-            .file_stem()
-            .unwrap_or_default()
-            .to_string_lossy(),
-        video_format
-    )
-}
-
-
-// Helper functions
-fn get_file_size_in_gb(file_path: &str) -> f64 {
-    fs::metadata(file_path)
-        .map(|meta| meta.len() as f64 / (1024.0 * 1024.0 * 1024.0))
-        .unwrap_or(0.0)
 }
 
 
@@ -326,7 +306,7 @@ impl eframe::App for MyApp {
                         ui.checkbox(&mut self.skip_if_exists, "Skip if Output File Exists");
                     });
 
-                    if ui.button("Encode").clicked() {
+                    if ui.button(RichText::new(format!("{} Encode", icons::PLAY_FILL)).size(12.0),).clicked() {
                         self.save_config();
                         self.enqueue_jobs();
                         self.start_encoding();
@@ -359,9 +339,9 @@ impl eframe::App for MyApp {
                             for stat in file_stats.iter() {
                                 ui.label(&stat.input_file);
                                 ui.label(format!("{:.2}", stat.input_size));
-                                ui.label(Self::format_f64_or_dash(stat.output_size));
-                                ui.label(Self::format_f64_or_dash(stat.reduction));
-                                ui.label(Self::format_f64_or_dash(stat.elapsed_time));
+                                ui.label(format_f64_or_dash(stat.output_size));
+                                ui.label(format_f64_or_dash(stat.reduction));
+                                ui.label(format_elapsed_time(stat.elapsed_time));
                                 ui.end_row();
                             }
                         });
@@ -377,22 +357,12 @@ impl eframe::App for MyApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    // Include the image at compile time
-    let icon_bytes = include_bytes!("../../icon.png");
-    // Decode the embedded image into RGBA data
-    let icon_image = image::load_from_memory(icon_bytes).expect("Failed to load icon");
-    let (width, height) = icon_image.dimensions();
-    let rgba = icon_image.to_rgba8();
-    let icon = IconData {
-        rgba: rgba.into_raw(),
-        width,
-        height,
-    };
-
-    // Define the NativeOptions with a Viewport
+    let app_icon = icon(include_bytes!("../../icon.png"));
     let native_options = NativeOptions {
-        viewport: ViewportBuilder::default().with_close_button(true).with_icon(icon),
+        viewport: ViewportBuilder::default()
+            .with_close_button(true)
+            .with_icon(app_icon),
             ..Default::default()
     };
-    eframe::run_native("Video Encoder", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
+    eframe::run_native("Batch ßVideo Encoder UIß", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
 }

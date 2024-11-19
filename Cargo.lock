@@ -427,6 +427,7 @@ dependencies = [
  "egui-remixicon",
  "image 0.25.5",
  "indicatif",
+ "lib_egui_utils",
  "rfd",
  "serde",
  "serde_yaml",
@@ -4003,6 +4004,14 @@ name = "lebe"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03087c2bad5e1034e8cace5926dec053fb3790248370865f5117a7d0213354c8"
+
+[[package]]
+name = "lib_egui_utils"
+version = "0.1.0"
+dependencies = [
+ "eframe 0.29.1",
+ "image 0.25.5",
+]
 
 [[package]]
 name = "lib_os_utils"
