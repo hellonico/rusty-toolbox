@@ -1,7 +1,7 @@
 use clap::Parser;
 use csv::ReaderBuilder;
-use eframe::{egui, Error};
-use egui::{FontId, TextBuffer, TextStyle};
+use eframe::{egui, Error, NativeOptions};
+use egui::{FontId, TextBuffer, TextStyle, ViewportBuilder};
 use regex::Regex;
 use std::collections::HashMap;
 use std::env::home_dir;
@@ -12,6 +12,7 @@ use std::process::{exit, Child, Command, Stdio};
 use std::{env, fs};
 use egui_extras::install_image_loaders;
 use tokio::io::AsyncWriteExt;
+use lib_egui_utils::icon;
 
 const RDP_TEMPLATE: &str = r"
 screen mode id:i:2
@@ -647,7 +648,15 @@ async fn main() -> Result<(), Error> {
     }
 
     let app = MyApp::new(file_path.into());
-    let options = eframe::NativeOptions::default();
+    // let options = eframe::NativeOptions::default();
+    let app_icon = icon(include_bytes!("icon.png"));
+    let options = NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_close_button(true)
+            .with_inner_size(egui::Vec2::new(400.0, 300.0))
+            .with_icon(app_icon),
+        ..Default::default()
+    };
     eframe::run_native("Tunnels",
                        options,
                        Box::new(|_cc| Ok(Box::new(app))))
