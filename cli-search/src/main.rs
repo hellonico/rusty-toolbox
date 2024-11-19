@@ -22,10 +22,10 @@ fn main() {
 
     // Recursively search for .java files
     if let Err(err) = visit_dirs(Path::new(folder), &mut |file_path| {
-        let file_name = file_path.file_name().unwrap_or_default().to_string_lossy();
+        let file_path_str = file_path.to_string_lossy();
 
-        // Exclude files with patterns in their names
-        if excludes.iter().any(|&ex| file_name.contains(ex)) {
+        // Exclude files based on patterns in the path
+        if excludes.iter().any(|&ex| file_path_str.contains(ex)) {
             return; // Skip this file
         }
 
