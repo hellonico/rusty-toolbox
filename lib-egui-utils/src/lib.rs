@@ -62,3 +62,30 @@ pub fn icon(icon_bytes: &[u8]) -> IconData {
     };
     icon
 }
+
+
+
+pub fn list_files_from_dir(input_folder: &String, extension_filter: &String) -> Vec<String> {
+    // Attempt to read the directory
+    let files = match fs::read_dir(input_folder) {
+        Ok(read_dir) => read_dir,
+        Err(_) => {
+            eprintln!("Directory not found: {}", input_folder);
+            return Vec::new(); // Return an empty vector if the folder does not exist
+        }
+    };
+
+    // Process the directory entries
+    files
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| {
+            let file_name = entry.file_name();
+            let file_name = file_name.to_string_lossy();
+            !file_name.starts_with('.') // Skip dot files
+                && entry.path().extension().map_or(false, |ext| {
+                ext.to_str().unwrap().eq_ignore_ascii_case(extension_filter)
+            })
+        })
+        .map(|entry| entry.path().to_string_lossy().to_string())
+        .collect::<Vec<_>>()
+}

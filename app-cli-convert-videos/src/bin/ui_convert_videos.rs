@@ -1,8 +1,8 @@
-use eframe::egui::ViewportBuilder;
+use eframe::egui::{Response, ViewportBuilder};
 use eframe::{egui, NativeOptions};
 use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
 use egui_remixicon::{add_to_fonts, icons};
-use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon};
+use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, icon, list_files_from_dir};
 use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs::{self};
@@ -116,19 +116,7 @@ impl MyApp {
     }
 
     fn enqueue_jobs(&mut self) {
-        let files = fs::read_dir(&self.input_folder)
-            .unwrap() //_or_else(|_| fs::ReadDir::empty())
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| {
-                let file_name = entry.file_name();
-                let file_name = file_name.to_string_lossy();
-                !file_name.starts_with('.') // Skip dot files
-                    && entry.path().extension().map_or(false, |ext| {
-                    ext.to_str().unwrap().eq_ignore_ascii_case(&self.file_extension)
-                })
-            })
-            .map(|entry| entry.path().to_string_lossy().to_string())
-            .collect::<Vec<_>>();
+        let files = list_files_from_dir(&self.input_folder, &self.file_extension);
 
         let mut job_queue = self.job_queue.lock().unwrap();
         job_queue.clear();
@@ -139,6 +127,7 @@ impl MyApp {
         // Reset file stats
         self.file_stats.lock().unwrap().clear();
     }
+
 
     fn start_encoding(&mut self) {
         let is_encoding = Arc::clone(&self.is_encoding);
@@ -197,11 +186,11 @@ impl MyApp {
                     eprintln!("Failed to run FFmpeg for {}: {}", file, e);
                     continue;
                 }
-                sleep(Duration::from_secs(1));
+                let elapsed_time = start_time.elapsed().as_secs_f64();
 
+                sleep(Duration::from_secs(3));
                 let output_size = get_file_size_in_gb(&output_file);
                 let reduction = (input_size - output_size).max(0.0);
-                let elapsed_time = start_time.elapsed().as_secs_f64();
 
                 {
                     // Update file_stats entry
@@ -305,7 +294,14 @@ impl eframe::App for MyApp {
                         ui.checkbox(&mut self.skip_if_exists, "Skip if Output File Exists");
                     });
 
-                    if ui.button(RichText::new(format!("{} Encode", icons::PLAY_FILL)).size(12.0),).clicked() {
+                    // Lock the mutex to safely access the value
+                    let is_encoding_value = *self.is_encoding.lock().unwrap();
+                    let eb:Response = if is_encoding_value {
+                        ui.button(RichText::new(format!("{} Encode", icons::PLAY_FILL)).size(14.0), )
+                    } else {
+                        ui.button(RichText::new(format!("{} Encode", icons::PLAY_CIRCLE_FILL)).size(14.0), )
+                    };
+                    if eb.clicked() {
                         self.save_config();
                         self.enqueue_jobs();
                         self.start_encoding();
@@ -360,7 +356,7 @@ fn main() -> Result<(), eframe::Error> {
     let native_options = NativeOptions {
         viewport: ViewportBuilder::default()
             .with_close_button(true)
-            .with_inner_size(egui::Vec2::new(400.0, 300.0))
+            .with_inner_size(egui::Vec2::new(800.0, 500.0))
             .with_icon(app_icon),
             ..Default::default()
     };
