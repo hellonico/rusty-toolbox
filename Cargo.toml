@@ -10,7 +10,7 @@ members = [
     "video-recorder-for-mum",
     "app-ui-bmi-for-dummies",
     "sample-wasm-plotting",
-    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui", "app-ui-screenshot-every-five-seconds", "app-cli-show-usb-devices", "app-cli-convert-videos", "lib-egui-utils", ]
+    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui", "app-ui-screenshot-every-five-seconds", "app-cli-show-usb-devices", "app-cli-convert-videos", "lib-egui-utils", "cli-search", ]
 default-members = [
     "app-cli-convert-videos",
     "tunelling",
