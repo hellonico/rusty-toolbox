@@ -1,3 +1,9 @@
+use eframe::egui::{IconData, ViewportBuilder};
+use eframe::{egui, NativeOptions};
+use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
+use egui_remixicon::{add_to_fonts, icons};
+use image::GenericImageView;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::fs::{self};
 use std::io::{self};
@@ -5,10 +11,6 @@ use std::path::Path;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-use eframe::egui;
-use egui::ComboBox;
-use serde::{Deserialize, Serialize};
 
 // Struct for configuration
 #[derive(Serialize, Deserialize, Default)]
@@ -49,11 +51,11 @@ struct MyApp {
     is_encoding: Arc<Mutex<bool>>,
     progress: f32,
     encoding: String,
-    file_stats: Vec<FileStat>,
+    file_stats: Arc<Mutex<Vec<FileStat>>>, // Use Arc<Mutex<>>
 }
 
 impl MyApp {
-    fn new() -> Self {
+    fn new(cc: &eframe::CreationContext) -> Self {
         let config_path = "app_config.yaml";
         let mut app = Self {
             input_folder: String::new(),
@@ -68,7 +70,7 @@ impl MyApp {
             total_jobs: 0,
             is_encoding: Arc::new(Mutex::new(false)),
             progress: 0.0,
-            file_stats: Vec::new(),
+            file_stats: Arc::new(Mutex::new(Vec::new())),
         };
 
         // Load config if it exists
@@ -85,6 +87,10 @@ impl MyApp {
             // Update the job queue with files from the loaded folder
             app.enqueue_jobs();
         }
+
+        let mut fonts = egui::FontDefinitions::default();
+        add_to_fonts(&mut fonts);
+        cc.egui_ctx.set_fonts(fonts);
 
         app
     }
@@ -129,56 +135,13 @@ impl MyApp {
         self.progress = 0.0;
 
         // Reset file stats
-        self.file_stats.clear();
-    }
-
-    fn execute_ffmpeg(&self, input_file: &str, output_file: &str) -> Result<(), String> {
-        let mut command = Command::new("ffmpeg");
-        command
-            .arg("-i")
-            .arg(input_file)
-            .arg("-c:v")
-            .arg(&self.encoding) // Use selected encoding
-            .arg("-preset")
-            .arg("fast")
-            .arg(output_file);
-
-        let status = command.status();
-        if status.is_err() || !status.unwrap().success() {
-            return Err("Failed to execute FFmpeg command.".to_string());
-        }
-
-        Ok(())
-    }
-
-    fn process_file(&mut self, input_file: String) {
-        let output_file = generate_output_path(&input_file, self.output_folder.clone(), self.encoding.clone());
-
-        // Skip processing if the output file already exists and skip_if_exists is enabled
-        if self.skip_if_exists && Path::new(&output_file).exists() {
-            return;
-        }
-
-        let input_size = get_file_size_in_gb(&input_file);
-        if let Ok(()) = self.execute_ffmpeg(&input_file, &output_file) {
-            let output_size = get_file_size_in_gb(&output_file);
-            let reduction = (input_size - output_size).max(0.0);
-            self.file_stats.push(FileStat {
-                input_file: input_file.clone(),
-                input_size,
-                output_size,
-                reduction,
-            });
-
-            if self.delete_original {
-                let _ = fs::remove_file(&input_file);
-            }
-        }
+        self.file_stats.lock().unwrap().clear();
     }
 
     fn start_encoding(&mut self) {
         let is_encoding = Arc::clone(&self.is_encoding);
         let job_queue = Arc::clone(&self.job_queue);
+        let file_stats = Arc::clone(&self.file_stats);
         let output_folder = self.output_folder.clone();
         let video_format = self.video_format.clone();
         let encoding = self.encoding.clone();
@@ -187,18 +150,32 @@ impl MyApp {
 
         *is_encoding.lock().unwrap() = true;
 
-        // let cs = self.clone();
         thread::spawn(move || {
             while let Some(file) = {
                 let mut queue = job_queue.lock().unwrap();
                 queue.pop_front()
             } {
-                let output_file = generate_output_path(&file.clone(), output_folder.clone(), video_format.clone());
+                let output_file = generate_output_path(&file, output_folder.clone(), video_format.clone());
 
                 // Skip if output file already exists
                 if skip_if_exists && Path::new(&output_file).exists() {
                     println!("Skipping {} as output file already exists", file);
                     continue;
+                }
+
+                let input_size = get_file_size_in_gb(&file);
+                let start_time = std::time::Instant::now();
+
+                {
+                    // Add initial entry to file_stats
+                    let mut stats = file_stats.lock().unwrap();
+                    stats.push(FileStat {
+                        input_file: file.clone(),
+                        input_size,
+                        output_size: None,
+                        reduction: None,
+                        elapsed_time: None,
+                    });
                 }
 
                 // Run FFmpeg command
@@ -219,6 +196,20 @@ impl MyApp {
                     continue;
                 }
 
+                let output_size = get_file_size_in_gb(&output_file);
+                let reduction = (input_size - output_size).max(0.0);
+                let elapsed_time = start_time.elapsed().as_secs_f64();
+
+                {
+                    // Update file_stats entry
+                    let mut stats = file_stats.lock().unwrap();
+                    if let Some(stat) = stats.iter_mut().find(|stat| stat.input_file == file) {
+                        stat.output_size = Some(output_size);
+                        stat.reduction = Some(reduction);
+                        stat.elapsed_time = Some(elapsed_time);
+                    }
+                }
+
                 if delete_original {
                     fs::remove_file(&file).unwrap_or_else(|e| eprintln!("Failed to delete file: {}", e));
                 }
@@ -237,7 +228,9 @@ impl MyApp {
         };
     }
 
-
+    fn format_f64_or_dash(stat: Option<f64>) -> String {
+        stat.map(|t| format!("{:.2}", t)).unwrap_or_else(|| "-".to_string())
+    }
 }
 
 fn generate_output_path(file: &String, output_folder:String, video_format:String) -> String{
@@ -261,22 +254,27 @@ fn get_file_size_in_gb(file_path: &str) -> f64 {
 }
 
 
-// FileStat struct
 struct FileStat {
     input_file: String,
     input_size: f64,
-    output_size: f64,
-    reduction: f64,
+    output_size: Option<f64>,
+    reduction: Option<f64>,
+    elapsed_time: Option<f64>, // Time in seconds
 }
-
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.update_progress();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
+
                 // Left panel
                 ui.vertical(|ui| {
+
+                    ui.heading(
+                        RichText::new(format!("{} Settings", icons::SETTINGS_3_FILL)).size(20.0),
+                    );
+
                     ui.horizontal(|ui| {
                         ui.label("Input Folder:");
                         if ui.button("Select").clicked() {
@@ -299,7 +297,7 @@ impl eframe::App for MyApp {
 
                     ui.horizontal(|ui| {
                         ui.label("Output Video Container:");
-                        egui::ComboBox::from_id_source("video_format")
+                        ComboBox::from_id_salt("video_format")
                             .selected_text(&self.video_format)
                             .show_ui(ui, |ui| {
                                 ui.selectable_value(&mut self.video_format, "mp4".to_string(), "MP4");
@@ -309,7 +307,7 @@ impl eframe::App for MyApp {
 
                     ui.horizontal(|ui| {
                         ui.label("Encoding:");
-                        egui::ComboBox::from_id_source("encoding")
+                        ComboBox::from_id_salt("encoding")
                             .selected_text(&self.encoding)
                             .show_ui(ui, |ui| {
                                 for option in ["libx264", "libx265", "vp9", "av1"] {
@@ -328,44 +326,47 @@ impl eframe::App for MyApp {
                         ui.checkbox(&mut self.skip_if_exists, "Skip if Output File Exists");
                     });
 
-                    if ui.button("Go").clicked() {
+                    if ui.button("Encode").clicked() {
                         self.save_config();
                         self.enqueue_jobs();
                         self.start_encoding();
                     }
 
+                    ui.heading(RichText::new(format!("{} Progress", icons::PROGRESS_1_FILL)).size(20.0), );
                     let remaining_jobs = self.job_queue.lock().unwrap().len();
                     ui.label(format!(
                         "Progress: {}/{} files processed",
                         self.total_jobs - remaining_jobs,
                         self.total_jobs
                     ));
-                    ui.add(egui::ProgressBar::new(self.progress).text(format!("{:.0}%", self.progress * 100.0)));
-                });
+                    ui.add(ProgressBar::new(self.progress).text(format!("{:.0}%", self.progress * 100.0)));
 
-                // Right panel for file stats
-                ui.vertical(|ui| {
-                    ui.label("File Statistics");
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        egui::Grid::new("file_stats")
-                            .striped(true)
-                            .show(ui, |ui| {
-                                ui.label("Input File");
-                                ui.label("Input Size (GB)");
-                                ui.label("Output Size (GB)");
-                                ui.label("Reduction (GB)");
+                    ui.heading(RichText::new(format!("{} File Stats", icons::COMPUTER_LINE)).size(20.0), );
+                    egui::Grid::new("file_stats_table")
+                        //.min_col_width(250.0)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            // Table headers
+                            ui.label("Input File");
+                            ui.label("Input Size (GB)");
+                            ui.label("Output Size (GB)");
+                            ui.label("Reduction (GB)");
+                            ui.label("Elapsed Time (s)");
+                            ui.end_row();
+
+                            // Populate rows
+                            let file_stats = self.file_stats.lock().unwrap();
+                            for stat in file_stats.iter() {
+                                ui.label(&stat.input_file);
+                                ui.label(format!("{:.2}", stat.input_size));
+                                ui.label(Self::format_f64_or_dash(stat.output_size));
+                                ui.label(Self::format_f64_or_dash(stat.reduction));
+                                ui.label(Self::format_f64_or_dash(stat.elapsed_time));
                                 ui.end_row();
-
-                                for stat in &self.file_stats {
-                                    ui.label(&stat.input_file);
-                                    ui.label(format!("{:.2}", stat.input_size));
-                                    ui.label(format!("{:.2}", stat.output_size));
-                                    ui.label(format!("{:.2}", stat.reduction));
-                                    ui.end_row();
-                                }
-                            });
-                    });
+                            }
+                        });
                 });
+
             });
         });
 
@@ -376,6 +377,22 @@ impl eframe::App for MyApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions::default();
-    eframe::run_native("Video Encoder", options, Box::new(|_cc| Ok(Box::new(MyApp::new()))))
+    // Include the image at compile time
+    let icon_bytes = include_bytes!("../../icon.png");
+    // Decode the embedded image into RGBA data
+    let icon_image = image::load_from_memory(icon_bytes).expect("Failed to load icon");
+    let (width, height) = icon_image.dimensions();
+    let rgba = icon_image.to_rgba8();
+    let icon = IconData {
+        rgba: rgba.into_raw(),
+        width,
+        height,
+    };
+
+    // Define the NativeOptions with a Viewport
+    let native_options = NativeOptions {
+        viewport: ViewportBuilder::default().with_close_button(true).with_icon(icon),
+            ..Default::default()
+    };
+    eframe::run_native("Video Encoder", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
 }
