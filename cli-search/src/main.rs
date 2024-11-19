@@ -13,18 +13,15 @@ fn main() {
 
     let folder = &args[1];
     let search = &args[2];
-    let excludes: Vec<&str> = args
-        .get(3)
-        .unwrap_or(&"test,wpp,fitnesse".to_string())
-        .split(',')
-        .collect();
+    let default_excludes = "test,wpp,fitnesse".to_string();
+    let exclude_str = args.get(3).unwrap_or(&default_excludes);
+    let excludes: Vec<&str> = exclude_str.split(',').collect();
 
-    // Prepare output CSV
-    let mut csv_output = Vec::new();
-    let mut total_lines = 0;
+    let mut csv_output = Vec::new(); // Mutable outside the closure
+    let mut total_lines = 0;         // Mutable outside the closure
 
     // Recursively search for .java files
-    if let Err(err) = visit_dirs(Path::new(folder), &|file_path| {
+    if let Err(err) = visit_dirs(Path::new(folder), &mut |file_path| {
         if file_path.extension().unwrap_or_default() == "java" {
             if let Ok(file) = fs::File::open(file_path) {
                 let reader = io::BufReader::new(file);
@@ -59,7 +56,7 @@ fn main() {
     }
 }
 
-fn visit_dirs(dir: &Path, cb: &dyn Fn(&Path)) -> io::Result<()> {
+fn visit_dirs(dir: &Path, cb: &mut dyn FnMut(&Path)) -> io::Result<()> {
     if dir.is_dir() {
         for entry in fs::read_dir(dir)? {
             let entry = entry?;
