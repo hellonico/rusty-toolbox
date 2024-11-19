@@ -233,7 +233,6 @@ impl MyApp {
 
 }
 
-
 struct FileStat {
     input_file: String,
     input_size: f64,
@@ -361,8 +360,9 @@ fn main() -> Result<(), eframe::Error> {
     let native_options = NativeOptions {
         viewport: ViewportBuilder::default()
             .with_close_button(true)
+            .with_inner_size(egui::Vec2::new(400.0, 300.0))
             .with_icon(app_icon),
             ..Default::default()
     };
-    eframe::run_native("Batch ßVideo Encoder UIß", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
+    eframe::run_native("BeeVEe - Batch Video Encoder", native_options, Box::new(|cc| Ok(Box::new(MyApp::new(cc)))))
 }

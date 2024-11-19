@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-eframe = "0.22"
-native-dialog = "0.6"
+eframe = "0.29.1"
+native-dialog = "0.7.0"
+lib_egui_utils = { path = "../lib-egui-utils" }

@@ -1,10 +1,12 @@
-use eframe::egui;
-use std::process::{Command, Output};
+use eframe::{egui, NativeOptions};
+use std::process::{exit, Command, Output};
 use std::path::PathBuf;
 use native_dialog::FileDialog;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
+use eframe::egui::ViewportBuilder;
+use lib_egui_utils::icon;
 
 #[derive(Default)]
 struct MyApp {
@@ -19,6 +21,15 @@ struct MyApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
+    let app_icon = icon(include_bytes!("../icon.png"));
+    let native_options = NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_close_button(true)
+            .with_inner_size(egui::Vec2::new(400.0, 300.0))
+            .with_icon(app_icon),
+        ..Default::default()
+    };
+
     let mut app = MyApp {
         current_tab: "Extract Audio".to_string(),
         selected_format: "mp3".to_string(), // Auto-select the first format
@@ -34,19 +45,15 @@ fn main() -> Result<(), eframe::Error> {
         }
     }
 
-    let options = eframe::NativeOptions {
-        initial_window_size: Some(egui::Vec2::new(400.0, 300.0)),
-        ..Default::default()
-    };
     eframe::run_native(
         "Extract Audio",
-        options,
-        Box::new(|_cc| Box::new(app)),
+        native_options,
+        Box::new(|_cc| Ok(Box::new(app))),
     )
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         if self.ffmpeg_not_found {
             egui::CentralPanel::default().show(ctx, |ui| {
                 ui.label("FFmpeg is not installed or not in the PATH.");
@@ -57,7 +64,7 @@ impl eframe::App for MyApp {
             // Check if the application should quit
             if let Some(exit_time) = self.exit_time {
                 if Instant::now() >= exit_time {
-                    frame.close();
+                    exit(0);
                 }
             }
             return;
