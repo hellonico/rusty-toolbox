@@ -284,6 +284,7 @@ impl eframe::App for MyApp {
                             egui::Grid::new("file_stats_table")
                                 //.min_col_width(250.0)
                                 .striped(true)
+                                .min_row_height(20.0)
                                 .show(ui, |ui| {
                                     // Table headers
                                     ui.label("Input File");

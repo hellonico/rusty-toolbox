@@ -10,7 +10,7 @@ fn main() {
     }
     let metadata = extract_metadata(video_path.into());
     // Print the parsed metadata
-    println!("{:#?}", metadata);
+    println!("{:#?}", metadata.format.filename);
 
     let timestamp = "01:00:01"; // Extract frame at 1-second mark
     let output_image = "output_frame.png";

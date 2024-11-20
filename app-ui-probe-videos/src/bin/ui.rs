@@ -3,13 +3,17 @@ use open;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use eframe::glow::COLOR_ATTACHMENT6;
+use egui::Color32;
+use egui_extras::install_image_loaders;
 use tokio::task;
-use app_ui_probe_videos::{extract_metadata, Metadata};
+use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 
 #[derive(Clone, Default)]
 struct VideoFile {
     path: PathBuf,
     metadata: Metadata,
+    thumbnail: Option<PathBuf>, // Path to the cached thumbnail
 }
 
 #[derive(Default)]
@@ -42,6 +46,8 @@ impl VideoApp {
 
         tokio::spawn(async move {
             if let Ok(entries) = fs::read_dir(&folder_path) {
+                let thumbnail_dir = Path::new(&folder_path).join(".thumbnails");
+                fs::create_dir_all(&thumbnail_dir).ok(); // Create thumbnail directory if it doesn't exist
                 let mut tasks = vec![];
 
                 for entry in entries.filter_map(Result::ok) {
@@ -54,12 +60,39 @@ impl VideoApp {
                         && !path.file_name().map_or(false, |name| name.to_str().map_or(false, |s| s.starts_with('.')))
                     {
                         let video_files = Arc::clone(&video_files);
+                        let thumbnail_dir = thumbnail_dir.clone();
+
                         tasks.push(task::spawn(async move {
                             let metadata = extract_metadata(path.to_string_lossy().to_string());
+
+                            let thumbnail_path = thumbnail_dir.join(
+                                path.file_name()
+                                    .unwrap_or_default()
+                                    .to_string_lossy()
+                                    .to_string()
+                                    + ".png",
+                            );
+
+                            if !thumbnail_path.exists() {
+                                // Generate thumbnail at 00:00:01 timestamp
+                                let timestamp = "00:00:01";
+                                if let Err(err) =
+                                    extract_frame(&path.to_string_lossy(), timestamp, &thumbnail_path.to_string_lossy())
+                                {
+                                    eprintln!("Failed to extract thumbnail: {}", err);
+                                }
+                            }
+
                             let video_file = VideoFile {
                                 path: path.clone(),
-                                metadata: metadata,
+                                metadata,
+                                thumbnail: if thumbnail_path.exists() {
+                                    Some(thumbnail_path)
+                                } else {
+                                    None
+                                },
                             };
+
                             video_files.lock().unwrap().push(video_file);
                         }));
                     }
@@ -77,6 +110,7 @@ impl VideoApp {
 
 impl eframe::App for VideoApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        install_image_loaders(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Video Files");
 
@@ -87,29 +121,38 @@ impl eframe::App for VideoApp {
                 if ui.button("Load Videos").clicked() {
                     self.load_videos();
                 }
-            });
-
-            ui.separator();
-
-            // Scrollable list of video files
-            egui::ScrollArea::vertical().show(ui, |ui| {
-                let video_files = self.video_files.lock().unwrap().clone();
-                for video_file in video_files.iter() {
-                    ui.horizontal(|ui| {
-                        if ui.button("Open").clicked() {
-                            open::that(&video_file.path).unwrap();
-                        }
-                        ui.label(video_file.path.file_name().unwrap().to_string_lossy().as_ref());
-                        if let metadata = &video_file.metadata {
-                            ui.label(format!("{:?}",&metadata));
-                        }
-                    });
-                }
 
                 // Show loading message if necessary
                 if *self.load_in_progress.lock().unwrap() {
                     ui.label("Loading videos...");
                 }
+            });
+
+            ui.separator();
+
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                let video_files = self.video_files.lock().unwrap().clone();
+                ui.horizontal_wrapped(|ui| {
+                    for video_file in video_files.iter() {
+                            if let Some(thumbnail) = &video_file.thumbnail {
+                                let img = egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap())).frame(false);
+                                let res = ui.add_sized([200.0, 100.0], img.clone());
+                                if res.clicked() {
+                                    if let Err(err) = open::that(&video_file.path) {
+                                        eprintln!("Failed to open video: {:?}", err);
+                                    }
+                                }
+                                if res.hovered() {
+                                    ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
+                                        width: 1.0,
+                                        color: Color32::from_black_alpha(200),
+                                    });
+                                };
+                            } else {
+                                ui.label(video_file.metadata.format.filename.clone());
+                            }
+                    }
+                });
             });
         });
     }
