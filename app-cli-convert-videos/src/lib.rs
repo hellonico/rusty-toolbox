@@ -35,6 +35,7 @@ pub struct FileStat {
     pub output_size: Option<f64>,
     pub reduction: Option<f64>,
     pub elapsed_time: Option<f64>, // Time in seconds
+    pub output_file: Option<String>,
 }
 
 

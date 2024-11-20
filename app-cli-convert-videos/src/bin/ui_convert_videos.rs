@@ -1,16 +1,14 @@
 use app_cli_convert_videos::{encode_video, AppConfig, FileStat};
 use eframe::egui;
-use eframe::egui::Response;
-use egui::{CentralPanel, ComboBox, ProgressBar, RichText};
+use egui::{include_image, CentralPanel, ComboBox, ProgressBar, RichText};
+use egui_extras::install_image_loaders;
 use egui_remixicon::{add_to_fonts, icons};
-use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_size_in_gb, list_files_from_dir2, my_default_options, SortBy};
+use lib_egui_utils::{format_elapsed_time, format_f64_or_dash, generate_output_path, get_file_name, get_file_size_in_gb, list_files_from_dir2, my_default_options, SortBy};
 use std::collections::VecDeque;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
-use thread::sleep;
 
 // Main application structure
 struct MyApp {
@@ -127,7 +125,7 @@ impl MyApp {
                     continue;
                 }
 
-                let input_size = get_file_size_in_gb(&file);
+                let input_size = get_file_size_in_gb(&file).unwrap();
                 let start_time = std::time::Instant::now();
 
                 {
@@ -139,6 +137,7 @@ impl MyApp {
                         output_size: None,
                         reduction: None,
                         elapsed_time: None,
+                        output_file: None,
                     });
                 }
 
@@ -151,8 +150,8 @@ impl MyApp {
                 }
                 let elapsed_time = start_time.elapsed().as_secs_f64();
 
-                sleep(Duration::from_secs(3));
-                let output_size = get_file_size_in_gb(&output_file);
+                // sleep(Duration::from_secs(3));
+                let output_size = get_file_size_in_gb(&output_file).unwrap();
                 let reduction = (input_size - output_size).max(0.0);
 
                 {
@@ -162,6 +161,7 @@ impl MyApp {
                         stat.output_size = Some(output_size);
                         stat.reduction = Some(reduction);
                         stat.elapsed_time = Some(elapsed_time);
+                        stat.output_file = Some(output_file);
                     }
                 }
 
@@ -183,11 +183,11 @@ impl MyApp {
             0.0
         };
     }
-
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        install_image_loaders(ctx);
         self.update_progress();
 
         CentralPanel::default().show(ctx, |ui| {
@@ -195,7 +195,6 @@ impl eframe::App for MyApp {
 
                 // Left panel
                 ui.vertical(|ui| {
-
                     ui.heading(
                         RichText::new(format!("{} Settings", icons::SETTINGS_3_FILL)).size(20.0),
                     );
@@ -253,18 +252,22 @@ impl eframe::App for MyApp {
 
                     // Lock the mutex to safely access the value
                     let is_encoding_value = *self.is_encoding.lock().unwrap();
-                    let eb:Response = if is_encoding_value {
-                        ui.button(RichText::new(format!("{} Encode", icons::PLAY_FILL)).size(14.0), )
-                    } else {
-                        ui.button(RichText::new(format!("{} Encode", icons::PLAY_CIRCLE_FILL)).size(14.0), )
-                    };
-                    if eb.clicked() {
-                        self.save_config();
-                        self.enqueue_jobs();
-                        self.start_encoding();
-                    }
+                    // need horizontal
+                    ui.horizontal(|ui| {
+                        if is_encoding_value {
+                            ui.set_min_height(50.0);
+                            ui.add(egui::Image::new(include_image!("../../cat.gif")));
+                        } else {
+                            let eb = ui.button(RichText::new(format!("{} Encode", icons::PLAY_CIRCLE_FILL)).size(14.0));
+                            if eb.clicked() {
+                                self.save_config();
+                                self.enqueue_jobs();
+                                self.start_encoding();
+                            }
+                        };
+                    });
 
-                    ui.heading(RichText::new(format!("{} Progress", icons::PROGRESS_1_FILL)).size(20.0), );
+                    ui.heading(RichText::new(format!("{} Progress", icons::PROGRESS_1_FILL)).size(20.0));
                     let remaining_jobs = self.job_queue.lock().unwrap().len();
                     ui.label(format!(
                         "Progress: {}/{} files processed",
@@ -273,43 +276,54 @@ impl eframe::App for MyApp {
                     ));
                     ui.add(ProgressBar::new(self.progress).text(format!("{:.0}%", self.progress * 100.0)));
 
-                    ui.heading(RichText::new(format!("{} File Stats", icons::COMPUTER_LINE)).size(20.0), );
-                    egui::Grid::new("file_stats_table")
-                        //.min_col_width(250.0)
-                        .striped(true)
+                    ui.heading(RichText::new(format!("{} File Stats", icons::COMPUTER_LINE)).size(20.0));
+                    egui::ScrollArea::vertical() // or `horizontal()` or `both()` depending on your needs )
+                        // .max_height(300.0)
+                        .max_height(ui.available_height())
                         .show(ui, |ui| {
-                            // Table headers
-                            ui.label("Input File");
-                            ui.label("Input Size (GB)");
-                            ui.label("Output Size (GB)");
-                            ui.label("Reduction (GB)");
-                            ui.label("Elapsed Time (s)");
-                            ui.end_row();
+                            egui::Grid::new("file_stats_table")
+                                //.min_col_width(250.0)
+                                .striped(true)
+                                .show(ui, |ui| {
+                                    // Table headers
+                                    ui.label("Input File");
+                                    ui.label("Input Size (GB)");
+                                    ui.label("Output Size (GB)");
+                                    ui.label("Reduction (GB)");
+                                    ui.label("Elapsed Time (s)");
+                                    ui.end_row();
 
-                            // Populate rows
-                            let file_stats = self.file_stats.lock().unwrap();
-                            for stat in file_stats.iter() {
-                                ui.label(&stat.input_file);
-                                ui.label(format!("{:.2}", stat.input_size));
-                                ui.label(format_f64_or_dash(stat.output_size));
-                                ui.label(format_f64_or_dash(stat.reduction));
-                                ui.label(format_elapsed_time(stat.elapsed_time));
-                                ui.end_row();
-                            }
+                                    // Populate rows
+                                    let file_stats = self.file_stats.lock().unwrap();
+                                    for stat in file_stats.iter() {
+                                        ui.label(get_file_name(&stat.input_file).unwrap());
+                                        if ui.label(format!("{:.2}", stat.input_size)).clicked() {
+                                            println!("Opening: {}", stat.input_file);
+                                            open::that(PathBuf::from(&stat.input_file)).expect("Cannot open input file");
+                                        }
+                                        if let Some(output_file) = &stat.output_file {
+                                            if ui.label(format_f64_or_dash(stat.output_size)).clicked() {
+                                                open::that(output_file).expect("Cannot open output file");
+                                            };
+                                        } else {
+                                            ui.image(include_image!("../../icons8-loading.gif"));
+                                        }
+
+                                        ui.label(format_f64_or_dash(stat.reduction));
+                                        ui.label(format_elapsed_time(stat.elapsed_time));
+                                        ui.end_row();
+                                    }
+                                });
                         });
                 });
-
             });
         });
 
         ctx.request_repaint();
     }
-
-
 }
 
 fn main() -> Result<(), eframe::Error> {
-
     let native_options =
         my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
 

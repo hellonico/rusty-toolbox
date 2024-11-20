@@ -1,4 +1,5 @@
-use std::fs;
+use std::{fs, io};
+use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use eframe::egui::{IconData, ViewportBuilder};
@@ -44,10 +45,15 @@ pub fn format_elapsed_time(duration: Option<f64>) -> String {
 
 
 // Helper functions
-pub fn get_file_size_in_gb(file_path: &str) -> f64 {
-    fs::metadata(file_path)
-        .map(|meta| meta.len() as f64 / (1024.0 * 1024.0 * 1024.0))
-        .unwrap_or(0.0)
+pub fn get_file_size_in_gb(file_path: &str) -> io::Result<f64> {
+    let file = File::open(file_path)?;
+    let metadata = file.metadata()?;
+    Ok(metadata.len() as f64 / (1024.0 * 1024.0 * 1024.0)) // Size in GB
+}
+
+
+pub fn get_file_name(path: &str) -> Option<String> {
+    Path::new(path).file_name().map(|name| name.to_string_lossy().into_owned())
 }
 
 

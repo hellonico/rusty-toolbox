@@ -1,0 +1,14 @@
+[package]
+name = "app-ui-probe-videos"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+env_logger = "0.11.5"
+serde_json = "1.0.133"
+serde = { version = "1.0", features = ["derive"] }
+eframe = "0.29.1"       # For building egui-based apps
+egui = "0.29.1"
+tokio = { version = "1.41.1", features = ["full"] } # For async tasks
+futures = "0.3.31"
+open = "5.3.1"
