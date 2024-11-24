@@ -1,13 +1,15 @@
+use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 use eframe::egui;
+use egui::Color32;
+use egui_extras::install_image_loaders;
 use open;
+use rfd::FileDialog;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use eframe::glow::COLOR_ATTACHMENT6;
-use egui::Color32;
-use egui_extras::install_image_loaders;
 use tokio::task;
-use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
+use lib_egui_utils::my_default_options;
+// Add this for folder selection
 
 #[derive(Clone, Default)]
 struct VideoFile {
@@ -112,12 +114,25 @@ impl eframe::App for VideoApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         install_image_loaders(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Video Files");
+            // Calculate the number of loaded videos
+            let video_count = self.video_files.lock().unwrap().len();
 
-            // Input folder path
+            ui.horizontal(|ui| {
+                ui.heading(format!("Video Files ({})", video_count)); // Display video count
+            });
+
+            // Input folder path and folder selection
             ui.horizontal(|ui| {
                 ui.label("Folder Path:");
                 ui.text_edit_singleline(&mut self.folder_path);
+
+                if ui.button("Select Folder").clicked() {
+                    if let Some(folder) = FileDialog::new().pick_folder() {
+                        self.folder_path = folder.to_string_lossy().to_string();
+                        self.load_videos(); // Automatically load videos after selecting folder
+                    }
+                }
+
                 if ui.button("Load Videos").clicked() {
                     self.load_videos();
                 }
@@ -134,23 +149,23 @@ impl eframe::App for VideoApp {
                 let video_files = self.video_files.lock().unwrap().clone();
                 ui.horizontal_wrapped(|ui| {
                     for video_file in video_files.iter() {
-                            if let Some(thumbnail) = &video_file.thumbnail {
-                                let img = egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap())).frame(false);
-                                let res = ui.add_sized([200.0, 100.0], img.clone());
-                                if res.clicked() {
-                                    if let Err(err) = open::that(&video_file.path) {
-                                        eprintln!("Failed to open video: {:?}", err);
-                                    }
+                        if let Some(thumbnail) = &video_file.thumbnail {
+                            let img = egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap())).frame(false);
+                            let res = ui.add_sized([200.0, 100.0], img.clone());
+                            if res.clicked() {
+                                if let Err(err) = open::that(&video_file.path) {
+                                    eprintln!("Failed to open video: {:?}", err);
                                 }
-                                if res.hovered() {
-                                    ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
-                                        width: 1.0,
-                                        color: Color32::from_black_alpha(200),
-                                    });
-                                };
-                            } else {
-                                ui.label(video_file.metadata.format.filename.clone());
                             }
+                            if res.hovered() {
+                                ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
+                                    width: 1.0,
+                                    color: Color32::from_black_alpha(200),
+                                });
+                            };
+                        } else {
+                            ui.label(video_file.metadata.format.filename.clone());
+                        }
                     }
                 });
             });
@@ -160,6 +175,9 @@ impl eframe::App for VideoApp {
 
 #[tokio::main]
 async fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions::default();
+    // let options = eframe::NativeOptions::default();
+    let options =
+        my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
+
     eframe::run_native("Video Browser", options, Box::new(|_cc| Ok(Box::new(VideoApp::new()))))
 }

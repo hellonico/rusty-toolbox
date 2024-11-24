@@ -13,3 +13,5 @@ tokio = { version = "1.41.1", features = ["full"] } # For async tasks
 futures = "0.3.31"
 open = "5.3.1"
 egui_extras = { version = "0.29.1", features = ["image", "all_loaders"] }
+rfd = "0.15.1"
+lib_egui_utils = { path = "../lib-egui-utils" }

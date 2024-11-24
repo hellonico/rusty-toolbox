@@ -284,12 +284,14 @@ impl eframe::App for MyApp {
                             egui::Grid::new("file_stats_table")
                                 //.min_col_width(250.0)
                                 .striped(true)
-                                .min_row_height(20.0)
+                                // .min_row_height(100.0)
                                 .show(ui, |ui| {
                                     // Table headers
                                     ui.label("Input File");
                                     ui.label("Input Size (GB)");
+                                    ui.label("");
                                     ui.label("Output Size (GB)");
+                                    ui.label("");
                                     ui.label("Reduction (GB)");
                                     ui.label("Elapsed Time (s)");
                                     ui.end_row();
@@ -298,16 +300,35 @@ impl eframe::App for MyApp {
                                     let file_stats = self.file_stats.lock().unwrap();
                                     for stat in file_stats.iter() {
                                         ui.label(get_file_name(&stat.input_file).unwrap());
-                                        if ui.label(format!("{:.2}", stat.input_size)).clicked() {
-                                            println!("Opening: {}", stat.input_file);
-                                            open::that(PathBuf::from(&stat.input_file)).expect("Cannot open input file");
-                                        }
+                                        ui.label(format!("{:.2}", stat.input_size));
+                                        ui.add(
+                                            egui::ImageButton::new(egui::include_image!("../../link_input.png"))
+                                                .rounding(10.0)
+                                        ).on_hover_text("Open Input File")
+                                            .clicked()
+                                            .then(|| {
+                                                open::that(PathBuf::from(&stat.input_file)).expect("Cannot open input file");
+                                            });
+                                        // if ui.add(egui::Image::new(include_image!("../../link_input.png"))).clicked() {
+                                        //     println!("Opening: {}", stat.input_file);
+                                        //
+                                        // }
                                         if let Some(output_file) = &stat.output_file {
-                                            if ui.label(format_f64_or_dash(stat.output_size)).clicked() {
-                                                open::that(output_file).expect("Cannot open output file");
-                                            };
+                                            ui.label(format_f64_or_dash(stat.output_size));
+                                            // if ui.add(egui::Image::new(include_image!("../../link_output.png"))).clicked() {
+                                            //     open::that(output_file).expect("Cannot open output file");
+                                            // };
+                                            ui.add(
+                                                egui::ImageButton::new(egui::include_image!("../../link_output.png"))
+                                                    .rounding(10.0)
+                                            ).on_hover_text("Open Output File")
+                                                .clicked()
+                                                .then(|| {
+                                                    open::that(output_file).expect("Cannot open output file");
+                                                });
                                         } else {
                                             ui.image(include_image!("../../icons8-loading.gif"));
+                                            ui.label("");
                                         }
 
                                         ui.label(format_f64_or_dash(stat.reduction));
