@@ -15,3 +15,5 @@ open = "5.3.1"
 egui_extras = { version = "0.29.1", features = ["image", "all_loaders"] }
 rfd = "0.15.1"
 lib_egui_utils = { path = "../lib-egui-utils" }
+dirs = "5.0.1"
+chrono = "0.4.38"

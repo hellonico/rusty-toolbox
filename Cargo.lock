@@ -380,6 +380,8 @@ dependencies = [
 name = "app-ui-probe-videos"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "dirs",
  "eframe 0.29.1",
  "egui 0.29.1",
  "egui_extras",
