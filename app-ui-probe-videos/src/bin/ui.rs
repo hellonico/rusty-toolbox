@@ -1,7 +1,7 @@
 use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 use eframe::egui;
 use egui::TextStyle::Small;
-use egui::{Color32, ComboBox, FontId, RichText, ScrollArea};
+use egui::{Color32, ComboBox, FontId, RichText, Rounding, ScrollArea};
 use egui_extras::install_image_loaders;
 use lib_egui_utils::my_default_options;
 use open;
@@ -31,6 +31,7 @@ struct VideoApp {
     show_filename: bool,
     show_filesize: bool,
     show_date: bool,
+    list_mode: bool,
 }
 
 
@@ -73,6 +74,7 @@ impl VideoApp {
             show_filesize: true,
             show_date: true,
             config_file,
+            list_mode: true,
         };
         configure_text_styles(&cc.egui_ctx);
         install_image_loaders(&cc.egui_ctx);
@@ -102,6 +104,7 @@ impl VideoApp {
                 self.show_filename = parts.get(3).unwrap().parse().unwrap();
                 self.show_date = parts.get(4).unwrap().parse().unwrap();
                 self.show_filesize = parts.get(5).unwrap().parse().unwrap();
+                self.list_mode = parts.get(6).unwrap_or(&"true").parse().unwrap();
             }
         }
     }
@@ -114,7 +117,7 @@ impl VideoApp {
                 SortField::Name => "Name",
             };
             let order = if self.sort_asc { "asc" } else { "desc" };
-            let settings = format!("{},{},{},{},{},{}", self.folder_path, field, order, self.show_filename, self.show_date, self.show_filesize);
+            let settings = format!("{},{},{},{},{},{},{}", self.folder_path, field, order, self.show_filename, self.show_date, self.show_filesize, self.list_mode);
             let _ = file.write_all(settings.as_bytes());
         }
     }
@@ -301,6 +304,9 @@ impl eframe::App for VideoApp {
                         if ui.checkbox(&mut self.show_date, "Show Date").clicked() {
                             self.save_settings();
                         };
+                        if ui.checkbox(&mut self.list_mode, "List Mode").clicked() {
+                            self.save_settings();
+                        };
                     });
                 });
             });
@@ -310,54 +316,86 @@ impl eframe::App for VideoApp {
             ScrollArea::vertical().show(ui, |ui| {
                 let video_files = self.video_files.lock().unwrap().clone();
 
+
                 ui.set_min_width(ui.available_width());
                 ui.set_min_height(ui.available_height());
-                ui.horizontal_wrapped(|ui| {
+                //
+                // println!("1.{}",ui.available_width());
+
+                ui.horizontal_wrapped(|ui| unsafe {
                     ui.set_min_width(ui.available_width());
                     ui.set_min_height(ui.available_height());
+                    //
+                    // println!("2.{}",ui.available_width());
 
                     for (i, video_file) in video_files.iter().enumerate() {
 
-                        // ui.group(|ui| {
-
                             if let Some(thumbnail) = &video_file.thumbnail {
-                                let img = egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap())).frame(false);
-                                let res = ui.add_sized([200.0, 100.0], img);
-                                if res.clicked() {
-                                    if let Err(err) = open::that(&video_file.path) {
-                                        eprintln!("Failed to open video: {:?}", err);
+
+                                let v = ui.vertical(|ui| {
+                                    let img =
+                                        egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap()))
+                                            .frame(false)
+                                            .rounding(Rounding::from(10.0));
+
+                                    let res = ui.add_sized([200.0, 100.0], img);
+
+                                    if res.clicked() {
+                                        if let Err(err) = open::that(&video_file.path) {
+                                            eprintln!("Failed to open video: {:?}", err);
+                                        }
                                     }
-                                }
-                                if res.hovered() {
-                                    ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
-                                        width: 1.0,
-                                        color: Color32::from_black_alpha(200),
-                                    });
-                                };
+                                    if res.hovered() {
+                                        ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
+                                            width: 1.0,
+                                            color: Color32::from_black_alpha(200),
+                                        });
+                                    };
 
 
-                                if self.show_filename {
-                                    ui.label(RichText::new(format!(
-                                        "{}",
-                                        video_file.path.file_name().unwrap_or_default().to_string_lossy()
-                                    )).text_style(Small));
-                                    // ui.label(RichText::new("Loading videos...").text_style(Small));
+                                    if self.show_filename {
+                                        ui.label(RichText::new(format!(
+                                            "{}",
+                                            video_file.path.file_name().unwrap_or_default().to_string_lossy()
+                                        )).text_style(Small));
+                                        // ui.label(RichText::new("Loading videos...").text_style(Small));
+                                    }
+                                    if self.show_filesize {
+                                        let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
+                                        let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
+                                        ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
+                                    }
+                                    if self.show_date {
+                                        let modified_date = fs::metadata(&video_file.path)
+                                            .and_then(|m| m.created())
+                                            .ok()
+                                            .map(|t| {
+                                                chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
+                                            })
+                                            .unwrap_or_else(|| "Unknown".to_string());
+                                        ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
+                                    }
+
+
+                                });
+
+
+                                if self.list_mode == true {
+                                    ui.end_row();
                                 }
-                                if self.show_filesize {
-                                    let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
-                                    let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
-                                    ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
-                                }
-                                if self.show_date {
-                                    let modified_date = fs::metadata(&video_file.path)
-                                        .and_then(|m| m.created())
-                                        .ok()
-                                        .map(|t| {
-                                            chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
-                                        })
-                                        .unwrap_or_else(|| "Unknown".to_string());
-                                    ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
-                                }
+                                let rem: usize = (ui.available_width() / 200.0).round() as usize;
+                                // if (i != 0) {
+
+                                    if (i % rem == 0) {
+                                        
+                                            println!("{}, {}", i, rem);
+                                            ui.end_row();
+                                        
+
+                                    }
+
+                                // }
+
                             }
 
 
