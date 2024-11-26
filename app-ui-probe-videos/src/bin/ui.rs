@@ -1,7 +1,9 @@
 use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 use eframe::egui;
-use egui::{Color32, ComboBox};
+use egui::TextStyle::Small;
+use egui::{Color32, ComboBox, FontId, RichText, ScrollArea};
 use egui_extras::install_image_loaders;
+use lib_egui_utils::my_default_options;
 use open;
 use rfd::FileDialog;
 use std::fs;
@@ -10,8 +12,6 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::task;
-use lib_egui_utils::my_default_options;
-// Add this for folder selection
 
 #[derive(Clone, Default)]
 struct VideoFile {
@@ -42,8 +42,23 @@ enum SortField {
     FileSize,
 }
 
+fn configure_text_styles(ctx: &egui::Context) {
+    use egui::FontFamily::Proportional;
+    use egui::TextStyle::*;
+
+    let mut style = (*ctx.style()).clone();
+    style.text_styles = [
+        (Heading, FontId::new(30.0, Proportional)),
+        (Body, FontId::new(18.0, Proportional)),
+        (Monospace, FontId::new(14.0, Proportional)),
+        (Button, FontId::new(14.0, Proportional)),
+        (Small, FontId::new(10.0, Proportional)),
+    ].into();
+    ctx.set_style(style);
+}
+
 impl VideoApp {
-    fn new() -> Self {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let config_file = dirs::config_dir()
             .unwrap_or_else(|| PathBuf::from("."))
             .join(".video-gallery");
@@ -54,11 +69,13 @@ impl VideoApp {
             load_in_progress: Arc::new(Mutex::new(false)),
             sort_field: SortField::default(),
             sort_asc: true,
-            show_filename: false,
-            show_filesize: false,
-            show_date: false,
+            show_filename: true,
+            show_filesize: true,
+            show_date: true,
             config_file,
         };
+        configure_text_styles(&cc.egui_ctx);
+        install_image_loaders(&cc.egui_ctx);
 
         app.load_settings();
         app
@@ -82,6 +99,9 @@ impl VideoApp {
                 if let Some(order) = parts.get(2) {
                     self.sort_asc = *order == "asc";
                 }
+                self.show_filename = parts.get(3).unwrap().parse().unwrap();
+                self.show_date = parts.get(4).unwrap().parse().unwrap();
+                self.show_filesize = parts.get(5).unwrap().parse().unwrap();
             }
         }
     }
@@ -94,12 +114,13 @@ impl VideoApp {
                 SortField::Name => "Name",
             };
             let order = if self.sort_asc { "asc" } else { "desc" };
-            let settings = format!("{},{},{}", self.folder_path, field, order);
+            let settings = format!("{},{},{},{},{},{}", self.folder_path, field, order, self.show_filename, self.show_date, self.show_filesize);
             let _ = file.write_all(settings.as_bytes());
         }
     }
 
     fn sort_videos(&mut self) {
+        // println!("Sorting Videos, {}", chrono::offset::Local::now());
         let mut video_files = self.video_files.lock().unwrap();
         video_files.sort_by(|a, b| {
             let order = match self.sort_field {
@@ -205,73 +226,103 @@ impl VideoApp {
 
 impl eframe::App for VideoApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        install_image_loaders(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
             // Calculate the number of loaded videos
             let video_count = self.video_files.lock().unwrap().len();
 
-            ui.horizontal(|ui| {
-                ui.heading(format!("Video Files ({})", video_count)); // Display video count
-            });
 
             // Input folder path and folder selection
-            ui.horizontal(|ui| {
-                ui.label("Folder Path:");
-                ui.text_edit_singleline(&mut self.folder_path);
+            ui.collapsing("", |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading(format!("Video Files ({})", video_count)); // Display video count
+                });
 
-                if ui.button("Select Folder").clicked() {
-                    if let Some(folder) = FileDialog::new().pick_folder() {
-                        self.folder_path = folder.to_string_lossy().to_string();
-                        self.load_videos(); // Automatically load videos after selecting folder
-                    }
-                }
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        ui.label("Folder Path:");
+                        ui.text_edit_singleline(&mut self.folder_path);
 
-                if ui.button("Load Videos").clicked() {
-                    self.load_videos();
-                }
+                        if ui.button("Select Folder").clicked() {
+                            if let Some(folder) = FileDialog::new().pick_folder() {
+                                self.folder_path = folder.to_string_lossy().to_string();
+                                self.load_videos(); // Automatically load videos after selecting folder
+                            }
+                        }
 
-                // Show loading message if necessary
-                if *self.load_in_progress.lock().unwrap() {
-                    ui.label("Loading videos...");
-                }
+                        if ui.button("Load Videos").clicked() {
+                            self.load_videos();
+                        }
 
-                ui.label("Sort By:");
-                let cb = ComboBox::from_label("")
-                    .selected_text(match self.sort_field {
-                        SortField::Name => "Name",
-                        SortField::Date => "Date",
-                        SortField::FileSize => "File Size",
-                    })
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.sort_field, SortField::Name, "Name");
-                        ui.selectable_value(&mut self.sort_field, SortField::Date, "Date");
-                        ui.selectable_value(&mut self.sort_field, SortField::FileSize, "File Size");
+                        // Show loading message if necessary
+                        if *self.load_in_progress.lock().unwrap() {
+                            ui.label(RichText::new("Loading videos...").text_style(Small));
+                        }
                     });
 
+                    ui.vertical(|ui| {
+                        ui.label("Sort By:");
+                        ComboBox::from_label("")
+                            .selected_text(match self.sort_field {
+                                SortField::Name => "Name",
+                                SortField::Date => "Date",
+                                SortField::FileSize => "File Size",
+                            })
+                            .show_ui(ui, |ui| {
+                                //TODO (re-)factorize this
+                                if ui.selectable_value(&mut self.sort_field, SortField::Name, "Name").clicked() {
+                                    self.sort_videos();
+                                    self.save_settings();
+                                };
+                                if ui.selectable_value(&mut self.sort_field, SortField::Date, "Date").clicked() {
+                                    self.sort_videos();
+                                    self.save_settings();
+                                };
+                                if ui.selectable_value(&mut self.sort_field, SortField::FileSize, "File Size").clicked() {
+                                    self.sort_videos();
+                                    self.save_settings();
+                                };
+                            });
 
-                if ui.button(if self.sort_asc { "Ascending" } else { "Descending" }).clicked() {
-                    self.sort_asc = !self.sort_asc;
-                }
+                        if ui.button(if self.sort_asc { "Ascending" } else { "Descending" }).clicked() {
+                            self.sort_asc = !self.sort_asc;
+                            self.save_settings();
+                            self.sort_videos();
+                        }
+                    });
 
-                // Checkboxes to toggle display options
-                ui.checkbox(&mut self.show_filename, "Show Filename");
-                ui.checkbox(&mut self.show_filesize, "Show File Size");
-                ui.checkbox(&mut self.show_date, "Show Date");
-
-                // Sort videos whenever sort settings change
-                self.sort_videos();
+                    ui.vertical(|ui| {
+                        // Checkboxes to toggle display options
+                        if ui.checkbox(&mut self.show_filename, "Show Filename").clicked() {
+                            self.save_settings();
+                        };
+                        if ui.checkbox(&mut self.show_filesize, "Show File Size").clicked() {
+                            self.save_settings();
+                        };
+                        if ui.checkbox(&mut self.show_date, "Show Date").clicked() {
+                            self.save_settings();
+                        };
+                    });
+                });
             });
 
             ui.separator();
 
-            egui::ScrollArea::vertical().show(ui, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
                 let video_files = self.video_files.lock().unwrap().clone();
+
+                ui.set_min_width(ui.available_width());
+                ui.set_min_height(ui.available_height());
                 ui.horizontal_wrapped(|ui| {
-                    for video_file in video_files.iter() {
-                        // ui.vert(|ui| {
+                    ui.set_min_width(ui.available_width());
+                    ui.set_min_height(ui.available_height());
+
+                    for (i, video_file) in video_files.iter().enumerate() {
+
+                        // ui.group(|ui| {
+
                             if let Some(thumbnail) = &video_file.thumbnail {
                                 let img = egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap())).frame(false);
-                                let res = ui.add_sized([200.0, 100.0], img.clone());
+                                let res = ui.add_sized([200.0, 100.0], img);
                                 if res.clicked() {
                                     if let Err(err) = open::that(&video_file.path) {
                                         eprintln!("Failed to open video: {:?}", err);
@@ -284,40 +335,55 @@ impl eframe::App for VideoApp {
                                     });
                                 };
 
-                                ui.vertical(|ui| {
-                                    if self.show_filename {
-                                        ui.add(egui::Label::new(format!(
-                                            "{}",
-                                            video_file.path.file_name().unwrap_or_default().to_string_lossy()
-                                        ))
-                                            // .text_style(egui::TextStyle::Small)
-                                        );
-                                    }
-                                    if self.show_filesize {
-                                        let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
-                                        let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
-                                        ui.add(egui::Label::new(format!("{:.2} GB", size_in_gb))
-                                            // .text_style(egui::TextStyle::Small)
-                                        );
-                                    }
-                                    if self.show_date {
-                                        let modified_date = fs::metadata(&video_file.path)
-                                            .and_then(|m| m.created())
-                                            .ok()
-                                            .map(|t| {
-                                                chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
-                                            })
-                                            .unwrap_or_else(|| "Unknown".to_string());
-                                        ui.add(egui::Label::new(format!("{}", modified_date))
-                                            // .text_style(egui::TextStyle::Small)
-                                        );
-                                    }
-                                });
-                            } else {
-                                ui.label(video_file.metadata.format.filename.clone());
+
+                                if self.show_filename {
+                                    ui.label(RichText::new(format!(
+                                        "{}",
+                                        video_file.path.file_name().unwrap_or_default().to_string_lossy()
+                                    )).text_style(Small));
+                                    // ui.label(RichText::new("Loading videos...").text_style(Small));
+                                }
+                                if self.show_filesize {
+                                    let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
+                                    let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
+                                    ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
+                                }
+                                if self.show_date {
+                                    let modified_date = fs::metadata(&video_file.path)
+                                        .and_then(|m| m.created())
+                                        .ok()
+                                        .map(|t| {
+                                            chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
+                                        })
+                                        .unwrap_or_else(|| "Unknown".to_string());
+                                    ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
+                                }
                             }
+
+
                         // });
-                    }
+                        // });
+
+                        // ui.end_row();
+
+                        // });
+                        // ui.horizontal(|ui| {
+                        //     ui.set_min_size(vec2(200.0,100.0));
+
+
+                        // else {
+                        //     let img = egui::ImageButton::new(format!("file://{}", video_file.metadata.format.filename)).frame(false);
+                        //     let res = ui.add_sized([200.0, 100.0], img.clone());
+                        //     if res.hovered() {
+                        //         ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
+                        //             width: 1.0,
+                        //             color: Color32::from_black_alpha(200),
+                        //         });
+                        //     }
+                        // }
+
+                        // });
+                    };
                 });
             });
         });
@@ -330,5 +396,5 @@ async fn main() -> Result<(), eframe::Error> {
     let options =
         my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
 
-    eframe::run_native("Video Browser", options, Box::new(|_cc| Ok(Box::new(VideoApp::new()))))
+    eframe::run_native("Video Browser", options, Box::new(|_cc| Ok(Box::new(VideoApp::new(_cc)))))
 }

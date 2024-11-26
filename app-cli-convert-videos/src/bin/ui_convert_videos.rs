@@ -280,6 +280,7 @@ impl eframe::App for MyApp {
                     egui::ScrollArea::vertical() // or `horizontal()` or `both()` depending on your needs )
                         // .max_height(300.0)
                         .max_height(ui.available_height())
+                        .min_scrolled_height(200.0)
                         .show(ui, |ui| {
                             egui::Grid::new("file_stats_table")
                                 //.min_col_width(250.0)
