@@ -1,7 +1,7 @@
 use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 use eframe::egui;
 use egui::TextStyle::Small;
-use egui::{Color32, ComboBox, FontId, RichText, Rounding, ScrollArea};
+use egui::{Color32, ComboBox, Context, FontId, RichText, Rounding, ScrollArea, Ui};
 use egui_extras::install_image_loaders;
 use lib_egui_utils::my_default_options;
 use open;
@@ -32,6 +32,8 @@ struct VideoApp {
     show_filesize: bool,
     show_date: bool,
     list_mode: bool,
+    file_to_delete: Option<String>,
+    show_confirmation: bool,
 }
 
 
@@ -75,6 +77,8 @@ impl VideoApp {
             show_date: true,
             config_file,
             list_mode: true,
+            file_to_delete: None,
+            show_confirmation :false,
         };
         configure_text_styles(&cc.egui_ctx);
         install_image_loaders(&cc.egui_ctx);
@@ -157,11 +161,15 @@ impl VideoApp {
             return; // Avoid reloading if already in progress
         }
         *in_progress = true;
+
         drop(in_progress); // Drop the lock early to avoid blocking
 
         let folder_path = self.folder_path.clone();
         let video_files = Arc::clone(&self.video_files);
         let load_in_progress = Arc::clone(&self.load_in_progress);
+
+        // TODO: decide to clear or not before.
+        video_files.lock().unwrap().clear();
 
         tokio::spawn(async move {
             if let Ok(entries) = fs::read_dir(&folder_path) {
@@ -225,10 +233,111 @@ impl VideoApp {
             }
         });
     }
+
+    fn layout(&mut self, video_file: &&VideoFile, ui: &mut Ui) {
+        if self.show_filename {
+            ui.label(RichText::new(format!(
+                "{}",
+                video_file.path.file_name().unwrap_or_default().to_string_lossy()
+            )).text_style(Small));
+            // ui.label(RichText::new("Loading videos...").text_style(Small));
+        }
+        if self.show_filesize {
+            let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
+            let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
+            ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
+        }
+        if self.show_date {
+            let modified_date = fs::metadata(&video_file.path)
+                .and_then(|m| m.created())
+                .ok()
+                .map(|t| {
+                    chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
+                })
+                .unwrap_or_else(|| "Unknown".to_string());
+            ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
+        }
+    }
+
+    fn video_image(&mut self, video_file: &&VideoFile, thumbnail: &PathBuf, ui: &mut Ui) {
+        let _f = format!("file://{}", thumbnail.to_str().unwrap());
+        let img =
+            egui::ImageButton::new(_f.clone())
+                .frame(false)
+                .rounding(Rounding::from(10.0));
+
+        let res = ui.add_sized([200.0, 100.0], img);
+
+        if res.secondary_clicked() {
+            // trash::delete().unwrap();
+            self.file_to_delete = Some(format!("{}",video_file.path.to_string_lossy().to_string()));
+            self.show_confirmation = true;
+        }
+
+
+        if res.clicked() {
+            if let Err(err) = open::that(&video_file.path) {
+                eprintln!("Failed to open video: {:?}", err);
+            }
+        }
+        if res.hovered() {
+            ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
+                width: 1.0,
+                color: Color32::from_black_alpha(200),
+            });
+        };
+    }
+
+    fn trash_dialog(&mut self, ctx: &Context) {
+        if self.show_confirmation {
+            let fil = &self.file_to_delete.clone().unwrap();
+            println!("File to delete: {:?}",fil);
+            egui::Window::new("Confirm Trash")
+                .collapsible(false)
+                .resizable(false)
+                .show(ctx, |ui| {
+                    ui.label(format!("Are you sure you want to move\n {:?}\n to the trash?", fil));
+                    ui.horizontal(|ui| {
+                        if ui.button("Yes").clicked() {
+                            if let file = fil {
+                                if let Err(err) = trash::delete(file) {
+                                    eprintln!("Failed to trash file: {}", err);
+                                } else {
+                                    println!("File '{}' moved to trash.", file);
+                                    //self.video_files.lock().unwrap().iter().find(|file| file.path) {
+                                    // {
+                                    //     let mut files = &self.video_files.lock().unwrap();
+                                    //     // let mut toremove;
+                                    //     // if let Some(pos) = files.iter().find(|file| file.path.to_str().unwrap() == fil) {
+                                    //     //     // if fs::metadata(fil).is_err() {
+                                    //     //     //     let _ = files.remove(pos);
+                                    //     //     //     println!("Removed: {}", fil);
+                                    //     //     // }
+                                    //     //     toremove = pos;
+                                    //     //     // files.
+                                    //     // }
+                                    //     &self.video_files.get_mut().
+                                    // }
+
+                                }
+                            }
+                            self.show_confirmation = false;
+                            self.file_to_delete = None;
+                        }
+                        if ui.button("No").clicked() {
+                            self.show_confirmation = false;
+                            self.file_to_delete = None;
+                        }
+                    });
+                });
+        }
+    }
 }
 
 impl eframe::App for VideoApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.trash_dialog(ctx);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // Calculate the number of loaded videos
             let video_count = self.video_files.lock().unwrap().len();
@@ -330,76 +439,22 @@ impl eframe::App for VideoApp {
                     // println!("2.{}",ui.available_width());
 
                     for (i, video_file) in video_files.iter().enumerate() {
-                        //
-                        // if ui.secondary_clicked() {
-                        //     //println!("{}", _f.clone());
-                        //     ui.context_menu( |ui| {
-                        //         if ui.button("Option 1").clicked() {
-                        //             println!("Option 1 selected");
-                        //         }
-                        //         if ui.button("Option 2").clicked() {
-                        //             println!("Option 2 selected");
-                        //         }
-                        //         if ui.button("Option 3").clicked() {
-                        //             println!("Option 3 selected");
-                        //         }
-                        //     });
-                        // }
+
+
 
                             if let Some(thumbnail) = &video_file.thumbnail {
 
-                                ui.vertical(|ui| {
-                                    let _f = format!("file://{}", thumbnail.to_str().unwrap());
-                                    let img =
-                                        egui::ImageButton::new(_f.clone())
-                                            .frame(false)
-                                            .rounding(Rounding::from(10.0));
-
-                                    let res = ui.add_sized([200.0, 100.0], img);
-
-
-                                    if res.clicked() {
-                                        if let Err(err) = open::that(&video_file.path) {
-                                            eprintln!("Failed to open video: {:?}", err);
-                                        }
-                                    }
-                                    if res.hovered() {
-                                        ui.painter().rect_stroke(res.rect, 10.0, egui::Stroke {
-                                            width: 1.0,
-                                            color: Color32::from_black_alpha(200),
+                                    if self.list_mode == true {
+                                        ui.horizontal(|ui| {
+                                            self.video_image(&video_file, thumbnail, ui);
+                                            self.layout(&video_file, ui);
                                         });
-                                    };
-
-                                    ui.vertical(|ui| {
-
-                                        if self.show_filename {
-                                            ui.label(RichText::new(format!(
-                                                "{}",
-                                                video_file.path.file_name().unwrap_or_default().to_string_lossy()
-                                            )).text_style(Small));
-                                            // ui.label(RichText::new("Loading videos...").text_style(Small));
-                                        }
-                                        if self.show_filesize {
-                                            let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
-                                            let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
-                                            ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
-                                        }
-                                        if self.show_date {
-                                            let modified_date = fs::metadata(&video_file.path)
-                                                .and_then(|m| m.created())
-                                                .ok()
-                                                .map(|t| {
-                                                    chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
-                                                })
-                                                .unwrap_or_else(|| "Unknown".to_string());
-                                            ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
-                                        }
-                                    });
-
-
-
-
-                                });
+                                    } else {
+                                        ui.vertical(|ui| {
+                                            self.video_image(&video_file, thumbnail, ui);
+                                            self.layout(&video_file, ui);
+                                        });
+                                    }
 
 
                                 if self.list_mode == true {

@@ -393,6 +393,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "trash",
 ]
 
 [[package]]
@@ -6851,6 +6852,23 @@ dependencies = [
  "tracing",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "trash"
+version = "5.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "defe1fdd4232e407b312377885a2c5396764972bddad87baf304753374a1bfc8"
+dependencies = [
+ "chrono",
+ "libc",
+ "log",
+ "objc2 0.5.2",
+ "objc2-foundation",
+ "once_cell",
+ "scopeguard",
+ "urlencoding",
+ "windows 0.56.0",
 ]
 
 [[package]]
