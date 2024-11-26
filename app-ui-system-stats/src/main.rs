@@ -71,7 +71,7 @@ impl MyApp {
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Refresh the system information on each update
-        self.sys.refresh_all();
+        // self.sys.refresh_all();
 
         let mut style = (*ctx.style()).clone();
         style.text_styles = [
@@ -301,7 +301,7 @@ impl eframe::App for MyApp {
                             });
                         }
 
-                        ctx.request_repaint();
+                        // ctx.request_repaint();
                     });
             });
     }
