@@ -74,7 +74,7 @@ pub fn extract_frame(video_path: &str, timestamp: &str, output_image: &str) -> R
             "-i", video_path,           // Input video file
             "-ss", timestamp,           // Timestamp to extract (e.g., "00:00:01")
             "-vframes", "1",            // Extract one frame
-            "-vf", "scale=-1:300",      // Optional: Resize to max height 720px, preserving aspect ratio
+            "-vf", "scale=-1:200",      // Optional: Resize to max height 720px, preserving aspect ratio
             "-q:v", "30",                // Set quality (lower is better, 2-31, where 31 is worst)
             output_image,               // Output image file
         ])

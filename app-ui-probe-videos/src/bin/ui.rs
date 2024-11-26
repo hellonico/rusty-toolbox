@@ -325,20 +325,38 @@ impl eframe::App for VideoApp {
                 ui.horizontal_wrapped(|ui| unsafe {
                     ui.set_min_width(ui.available_width());
                     ui.set_min_height(ui.available_height());
+                    ui.set_max_height(150.0);
                     //
                     // println!("2.{}",ui.available_width());
 
                     for (i, video_file) in video_files.iter().enumerate() {
+                        //
+                        // if ui.secondary_clicked() {
+                        //     //println!("{}", _f.clone());
+                        //     ui.context_menu( |ui| {
+                        //         if ui.button("Option 1").clicked() {
+                        //             println!("Option 1 selected");
+                        //         }
+                        //         if ui.button("Option 2").clicked() {
+                        //             println!("Option 2 selected");
+                        //         }
+                        //         if ui.button("Option 3").clicked() {
+                        //             println!("Option 3 selected");
+                        //         }
+                        //     });
+                        // }
 
                             if let Some(thumbnail) = &video_file.thumbnail {
 
-                                let v = ui.vertical(|ui| {
+                                ui.vertical(|ui| {
+                                    let _f = format!("file://{}", thumbnail.to_str().unwrap());
                                     let img =
-                                        egui::ImageButton::new(format!("file://{}", thumbnail.to_str().unwrap()))
+                                        egui::ImageButton::new(_f.clone())
                                             .frame(false)
                                             .rounding(Rounding::from(10.0));
 
                                     let res = ui.add_sized([200.0, 100.0], img);
+
 
                                     if res.clicked() {
                                         if let Err(err) = open::that(&video_file.path) {
@@ -352,29 +370,33 @@ impl eframe::App for VideoApp {
                                         });
                                     };
 
+                                    ui.vertical(|ui| {
 
-                                    if self.show_filename {
-                                        ui.label(RichText::new(format!(
-                                            "{}",
-                                            video_file.path.file_name().unwrap_or_default().to_string_lossy()
-                                        )).text_style(Small));
-                                        // ui.label(RichText::new("Loading videos...").text_style(Small));
-                                    }
-                                    if self.show_filesize {
-                                        let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
-                                        let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
-                                        ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
-                                    }
-                                    if self.show_date {
-                                        let modified_date = fs::metadata(&video_file.path)
-                                            .and_then(|m| m.created())
-                                            .ok()
-                                            .map(|t| {
-                                                chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
-                                            })
-                                            .unwrap_or_else(|| "Unknown".to_string());
-                                        ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
-                                    }
+                                        if self.show_filename {
+                                            ui.label(RichText::new(format!(
+                                                "{}",
+                                                video_file.path.file_name().unwrap_or_default().to_string_lossy()
+                                            )).text_style(Small));
+                                            // ui.label(RichText::new("Loading videos...").text_style(Small));
+                                        }
+                                        if self.show_filesize {
+                                            let file_size = fs::metadata(&video_file.path).map(|m| m.len()).unwrap_or(0);
+                                            let size_in_gb = file_size as f64 / 1_073_741_824.0; // Convert bytes to GB
+                                            ui.label(RichText::new(format!("{:.2} GB", size_in_gb)).text_style(Small));
+                                        }
+                                        if self.show_date {
+                                            let modified_date = fs::metadata(&video_file.path)
+                                                .and_then(|m| m.created())
+                                                .ok()
+                                                .map(|t| {
+                                                    chrono::DateTime::<chrono::Local>::from(t).format("%Y-%m-%d %H:%M").to_string()
+                                                })
+                                                .unwrap_or_else(|| "Unknown".to_string());
+                                            ui.label(RichText::new(format!("{}", modified_date)).text_style(Small));
+                                        }
+                                    });
+
+
 
 
                                 });
@@ -383,18 +405,15 @@ impl eframe::App for VideoApp {
                                 if self.list_mode == true {
                                     ui.end_row();
                                 }
-                                let rem: usize = (ui.available_width() / 200.0).round() as usize;
-                                // if (i != 0) {
+                                let rem: usize = (ui.available_width() / 210.0).round() as usize;
 
-                                    if (i % rem == 0) {
-                                        
-                                            println!("{}, {}", i, rem);
+                                    if ((i+1) % rem == 0) {
+
+                                            // println!("{}, {}", i, rem);
                                             ui.end_row();
-                                        
+
 
                                     }
-
-                                // }
 
                             }
 
