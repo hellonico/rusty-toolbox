@@ -1,0 +1,10 @@
+[package]
+name = "app-ui-cute"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.29.1"
+lib_ollama_utils = { path = "../lib-ollama-utils" }
+pollster = "0.4.0"
+tokio = "1.41.1"
