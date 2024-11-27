@@ -5,17 +5,31 @@ use std::sync::{Arc, Mutex};
 
 fn configure_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
-    fonts.font_data.insert(
-        "CuteFont".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../SourGummy-Thin.ttf")),
-    );
-    fonts
-        .families
-        .get_mut(&egui::FontFamily::Proportional)
-        .unwrap()
-        .insert(0, "CuteFont".to_owned());
+
+    // Helper function to insert font data and set it in the font families
+    let mut insert_font = |name: &str, bytes| {
+        fonts.font_data.insert(
+            name.to_owned(),
+            egui::FontData::from_static(bytes),
+        );
+        fonts
+            .families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap()
+            .insert(0, name.to_owned());
+    };
+
+    // Add both fonts
+    insert_font("CuteFont", include_bytes!("../../SourGummy-Thin.ttf"));
+    // insert_font("NotoSansJP", include_bytes!("../../NotoSansJP-Regular.ttf"));
+
+    // Set the default font to CuteFont
+    // fonts.family_and_size.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
+    // fonts.families.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
+
     ctx.set_fonts(fonts);
 }
+
 
 
 pub struct CuteChatApp {
@@ -139,7 +153,7 @@ impl CuteChatApp {
             let mut chat_mode = self.chat_mode.lock().unwrap().clone();
             let available_models = self.available_models.lock().unwrap().clone();
             // let model_names = fetch_models(String::from("http://localhost:11434"));
-            egui::Window::new("Ollama Configuration")
+            egui::Window::new("Cute Configuration")
                 .collapsible(false)
                 .resizable(false)
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -147,6 +161,7 @@ impl CuteChatApp {
                     ui.label("Set Ollama URL:");
                     if ui.text_edit_singleline(&mut url).changed() {
                         *self.ollama_url.lock().unwrap() = url.clone(); // Write back changes
+                        self.load_models();
                     }
 
                     ui.label("Set Ollama Model:");
@@ -163,9 +178,9 @@ impl CuteChatApp {
                         *self.ollama_model.lock().unwrap() = model.clone(); // Write back changes
                     }
 
-                    // if ui.checkbox(&mut chat_mode, "Chat Mode:").changed() {
-                    //     *self.chat_mode.lock().unwrap() = chat_mode.clone(); // Write back changes
-                    // };
+                    if ui.checkbox(&mut chat_mode, "Chat Mode:").changed() {
+                        *self.chat_mode.lock().unwrap() = chat_mode.clone(); // Write back changes
+                    };
 
                     ui.label("System Prompt");
                     if ui.text_edit_multiline(&mut ollama_system_prompt).changed() {
