@@ -1,4 +1,5 @@
-use eframe::egui::{self, Align, Color32, Context, Layout, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
+use std::fmt::format;
+use eframe::egui::{self, Align, Color32, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
 use lib_ollama_utils::ollama;
 use pollster::FutureExt;
 use std::sync::{Arc, Mutex};
@@ -20,6 +21,7 @@ fn configure_fonts(ctx: &egui::Context) {
     ctx.set_fonts(fonts);
 }
 
+
 pub struct CuteChatApp {
     messages: Arc<Mutex<Vec<(String, String)>>>, // Messages to be displayed
     input_text: Arc<Mutex<String>>,              // User's input
@@ -27,6 +29,9 @@ pub struct CuteChatApp {
     streamed_words: Arc<Mutex<Vec<String>>>,     // Words being streamed
     stream_index: Arc<Mutex<usize>>,             // Index for current word in stream
     stop_streaming: Arc<Mutex<bool>>,            // Whether to stop streaming
+    ollama_url: Arc<Mutex<String>>,              // Ollama API URL
+    ollama_model: Arc<Mutex<String>>,            // Ollama model name
+    show_config_dialog: Arc<Mutex<bool>>,        // Whether to show the config dialog
 }
 
 impl CuteChatApp {
@@ -45,8 +50,13 @@ impl CuteChatApp {
             streamed_words: Arc::new(Mutex::new(Vec::new())),
             stream_index: Arc::new(Mutex::new(0)),
             stop_streaming: Arc::new(Mutex::new(true)),
+            ollama_url: Arc::new(Mutex::new("http://localhost:11434".to_owned())), // Default URL
+            ollama_model: Arc::new(Mutex::new("llama3.2".to_owned())),
+            show_config_dialog: Arc::new(Mutex::new(false)),
         }
     }
+
+
 
     fn start_streaming(&self, input: String) {
         // let streaming_message = self.streaming_message.clone();
@@ -55,19 +65,22 @@ impl CuteChatApp {
         let messages = self.messages.clone();
         let input_field = self.input_text.clone();
 
+        let ollama_url = format!("{}/api/generate",self.ollama_url.lock().unwrap().clone());
+        let ollama_model = self.ollama_model.lock().unwrap().clone();
+
+
         // TODO: handle properly
         // Save the stop signal to indicate we are not stopping streaming
         // *self.stop_streaming.lock().unwrap() = false;
 
         tokio::spawn(async move {
             let input_guard = input.clone();
-            let ii: &str = input_guard.as_ref();
 
-            ollama("llama3.2", ii.as_str(), |token| {
+            ollama(&*ollama_url, &ollama_model, &input, |token| {
                 streamed_words.lock().unwrap().push(token.parse().unwrap());
             })
-            .await
-            .unwrap();
+                .await
+                .expect("error");
 
             // Finalize the message when all words are streamed
             let final_message = streamed_words.lock().unwrap().join(" ");
@@ -79,6 +92,75 @@ impl CuteChatApp {
             streamed_words.lock().unwrap().clear();
 
             *input_field.clone().lock().unwrap() = String::from("");
+        });
+    }
+
+    fn config_dialog_ui(&self, ctx: &Context) {
+        let mut show_dialog = self.show_config_dialog.lock().unwrap();
+        if *show_dialog {
+            let mut url = self.ollama_url.lock().unwrap().clone(); // Get a copy to work with
+            let mut model = self.ollama_model.lock().unwrap().clone();
+
+            egui::Window::new("Ollama Configuration")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.label("Set Ollama URL:");
+                    if ui.text_edit_singleline(&mut url).changed() {
+                        *self.ollama_url.lock().unwrap() = url.clone(); // Write back changes
+                    }
+
+                    ui.label("Set Ollama Model:");
+                    if ui.text_edit_singleline(&mut model).changed() {
+                        *self.ollama_model.lock().unwrap() = model.clone(); // Write back changes
+                    }
+
+                    ui.horizontal(|ui| {
+                        if ui.button("Save").clicked() {
+                            *self.ollama_url.lock().unwrap() = url.clone();
+                            *self.ollama_model.lock().unwrap() = model.clone();
+                            *show_dialog = false;
+                        }
+                        if ui.button("Cancel").clicked() {
+                            *show_dialog = false;
+                        }
+                    });
+                });
+        }
+    }
+
+
+    fn menu_bar(&self, ctx: &Context) {
+
+        TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                if ui.button("Settings").clicked() {
+                    *self.show_config_dialog.lock().unwrap() = true;
+                }
+            });
+        });
+    }
+
+    fn display_configuration(&self, ui: &mut egui::Ui) {
+        // Read the current values
+        let ollama_url = self.ollama_url.lock().unwrap();
+        let ollama_model = self.ollama_model.lock().unwrap();
+
+        // Add a small section with the configuration details
+        ui.horizontal(|ui| {
+            ui.add_space(10.0); // Add some space for neat alignment
+            ui.label(
+                RichText::new(format!("URL: {}", ollama_url))
+                    .small() // Make the font smaller
+                    .color(egui::Color32::GRAY),
+            );
+            ui.add_space(20.0); // Add some spacing between URL and Model
+            ui.label(
+                RichText::new(format!("Model: {}", ollama_model))
+                    .small() // Make the font smaller
+                    .color(egui::Color32::GRAY),
+            );
         });
     }
 
@@ -172,9 +254,15 @@ impl eframe::App for CuteChatApp {
 
         TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.bottom_bar(ui);
+            self.display_configuration(ui);
+            self.menu_bar(ctx); // Add the menu bar
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+
+            self.config_dialog_ui(ctx); // Display configuration dialog if needed
+
+
             self.chat_ui(ui, ctx);
         });
     }

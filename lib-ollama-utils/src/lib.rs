@@ -16,7 +16,7 @@ struct ResponseData {
 /// - `prompt`: The prompt input for the model.
 /// - `on_token`: A function to execute for each received token.
 
-pub async fn ollama<F>(model: &str, prompt: &str, on_token: F) -> Result<(), Box<dyn Error>>
+pub async fn ollama<F>(url: &str, model: &str, prompt: &str, on_token: F) -> Result<(), Box<dyn Error>>
 where
     F: Fn(&str) + Send + Sync, // `on_token` must be callable from multiple threads
 {
@@ -24,17 +24,20 @@ where
 
     // Send a POST request
     let response = client
-        .post("http://127.0.0.1:11434/api/generate")
+        .post(url.to_string())
         .json(&serde_json::json!({
-            "model": model,
+            "model": model.to_string(),
             "prompt": prompt
         }))
         .send()
         .await?;
 
+    // print!("{}", response.headers().clone().un);
+
     // Stream the response body line by line
     let mut stream = response.bytes_stream();
     let mut buffer = Vec::new();
+
 
     while let Some(chunk) = stream.next().await {
         match chunk {
