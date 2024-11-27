@@ -1,6 +1,6 @@
-use eframe::egui::{self, menu, Align, Color32, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
+use eframe::egui::{self, menu, Align, Color32, ComboBox, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
 use lib_egui_utils::my_default_options;
-use lib_ollama_utils::{ollama, ollama_with_messages};
+use lib_ollama_utils::{fetch_models, ollama, ollama_with_messages};
 use std::sync::{Arc, Mutex};
 
 fn configure_fonts(ctx: &egui::Context) {
@@ -30,6 +30,7 @@ pub struct CuteChatApp {
     show_config_dialog: Arc<Mutex<bool>>,        // Whether to show the config dialog
     ollama_system_prompt: Arc<Mutex<String>>,
     chat_mode: Arc<Mutex<bool>>,        // Whether to show the config dialog
+    available_models: Arc<Mutex<Vec<String>>>,
 }
 
 impl CuteChatApp {
@@ -54,10 +55,19 @@ impl CuteChatApp {
             show_config_dialog: Arc::new(Mutex::new(false)),
             ollama_system_prompt: Arc::new(Mutex::new(String::from("You are a young dyamic and talkative assistant"))),
             chat_mode: Arc::new(Mutex::new(true)),
+            available_models: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
+    fn load_models(&self) {
+        let ollama_url = self.ollama_url.lock().unwrap().clone();
+        let available_models = self.available_models.clone();
 
+        tokio::spawn(async move {
+            let models = fetch_models(ollama_url).await;
+            *available_models.lock().unwrap() = models;
+        });
+    }
 
     fn start_streaming(&self, input: String) {
         // let streaming_message = self.streaming_message.clone();
@@ -119,13 +129,16 @@ impl CuteChatApp {
     }
 
     fn config_dialog_ui(&self, ctx: &Context) {
+        self.load_models();
+
         let mut show_dialog = self.show_config_dialog.lock().unwrap();
         if *show_dialog {
             let mut url = self.ollama_url.lock().unwrap().clone(); // Get a copy to work with
             let mut model = self.ollama_model.lock().unwrap().clone();
             let mut ollama_system_prompt = self.ollama_system_prompt.lock().unwrap().clone();
             let mut chat_mode = self.chat_mode.lock().unwrap().clone();
-
+            let available_models = self.available_models.lock().unwrap().clone();
+            // let model_names = fetch_models(String::from("http://localhost:11434"));
             egui::Window::new("Ollama Configuration")
                 .collapsible(false)
                 .resizable(false)
@@ -137,13 +150,22 @@ impl CuteChatApp {
                     }
 
                     ui.label("Set Ollama Model:");
-                    if ui.text_edit_singleline(&mut model).changed() {
+                    if ComboBox::from_label("Select Model")
+                        .selected_text(model.clone()) // Use `model.clone()` here since `selected_text` expects `String` or `&str`
+                        .show_ui(ui, |ui| {
+                            for name in available_models.iter() {
+                                ui.selectable_value(&mut model, name.clone(), name); // `&mut model` ensures the value is updated
+                            }
+                        })
+                        .inner
+                        .is_some()
+                    {
                         *self.ollama_model.lock().unwrap() = model.clone(); // Write back changes
                     }
 
-                    if ui.checkbox(&mut chat_mode, "Chat Mode:").changed() {
-                        *self.chat_mode.lock().unwrap() = chat_mode.clone(); // Write back changes
-                    };
+                    // if ui.checkbox(&mut chat_mode, "Chat Mode:").changed() {
+                    //     *self.chat_mode.lock().unwrap() = chat_mode.clone(); // Write back changes
+                    // };
 
                     ui.label("System Prompt");
                     if ui.text_edit_multiline(&mut ollama_system_prompt).changed() {

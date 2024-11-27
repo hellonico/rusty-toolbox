@@ -130,3 +130,38 @@ where
 
     Ok(())
 }
+
+
+////
+// Function to fetch models from the API
+
+// Struct to parse the API response
+#[derive(Deserialize, Debug)]
+struct ModelDetails {
+    format: String,
+    family: String,
+    families: Option<Vec<String>>,
+    parameter_size: String,
+    quantization_level: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct Model {
+    name: String,
+    modified_at: String,
+    size: u64,
+    digest: String,
+    details: ModelDetails,
+}
+
+#[derive(Deserialize, Debug)]
+struct ModelsResponse {
+    models: Vec<Model>,
+}
+pub async fn fetch_models(base_url:String) -> Vec<String> {
+    let url = format!("{}/api/tags",base_url);
+    let response = reqwest::get(url).await.unwrap();
+    let models_response: ModelsResponse = response.json().await.unwrap();
+    let models:Vec<String> = models_response.models.into_iter().map(|m| m.name).collect();
+    models
+}
