@@ -8,3 +8,4 @@ eframe = "0.29.1"
 lib_ollama_utils = { path = "../lib-ollama-utils" }
 pollster = "0.4.0"
 tokio = "1.41.1"
+lib_egui_utils = { path = "../lib-egui-utils" }

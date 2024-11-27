@@ -4,6 +4,7 @@ use pollster::FutureExt;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use tokio::runtime::Builder;
+use lib_egui_utils::my_default_options;
 
 fn configure_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
@@ -182,7 +183,9 @@ impl eframe::App for CuteChatApp {
 // Main method
 #[tokio::main]
 async fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions::default();
+    let options =
+        my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
+
     eframe::run_native(
         "Cute Chat App",
         options,
