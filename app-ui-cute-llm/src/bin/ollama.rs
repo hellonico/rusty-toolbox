@@ -1,4 +1,4 @@
-use eframe::egui::{self, Align, Color32, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
+use eframe::egui::{self, menu, Align, Color32, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
 use lib_egui_utils::my_default_options;
 use lib_ollama_utils::{ollama, ollama_with_messages};
 use std::sync::{Arc, Mutex};
@@ -162,13 +162,21 @@ impl CuteChatApp {
 
     fn menu_bar(&self, ctx: &Context) {
 
-        TopBottomPanel::top("menu_bar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.button("Settings").clicked() {
-                    *self.show_config_dialog.lock().unwrap() = true;
-                }
-            });
-        });
+        // TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+        //     ui.horizontal(|ui| {
+        //         if ui.button("Settings").clicked() {
+        //             *self.show_config_dialog.lock().unwrap() = true;
+        //         }
+        //     });
+        // });
+        //
+        // menu::bar(ui, |ui| {
+        //     ui.menu_button("Menu", |ui| {
+        //         if ui.button("Settings").clicked() {
+        //             *self.show_config_dialog.lock().unwrap() = true;
+        //         }
+        //     });
+        // });
     }
 
     fn display_configuration(&self, ui: &mut egui::Ui) {
@@ -290,10 +298,22 @@ impl eframe::App for CuteChatApp {
         TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
             self.bottom_bar(ui);
             self.display_configuration(ui);
-            self.menu_bar(ctx); // Add the menu bar
+
+            // self.menu_bar(ctx); // Add the menu bar
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
+
+            menu::bar(ui, |ui| {
+                ui.menu_button("Menu", |ui| {
+                    if ui.button("Settings").clicked() {
+                        *self.show_config_dialog.lock().unwrap() = true;
+                    }
+                    if ui.button("Clear History").clicked() {
+                        self.messages.lock().unwrap().clear();
+                    }
+                });
+            });
 
             self.config_dialog_ui(ctx); // Display configuration dialog if needed
 
