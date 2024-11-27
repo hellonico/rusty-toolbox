@@ -431,7 +431,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "app-ui-cute"
+name = "app-ui-cute-llm"
 version = "0.1.0"
 dependencies = [
  "eframe 0.29.1",

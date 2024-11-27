@@ -1,11 +1,7 @@
-use std::fmt::format;
 use eframe::egui::{self, Align, Color32, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
-use lib_ollama_utils::ollama;
-use pollster::FutureExt;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use tokio::runtime::Builder;
 use lib_egui_utils::my_default_options;
+use lib_ollama_utils::{ollama, ollama_with_messages};
+use std::sync::{Arc, Mutex};
 
 fn configure_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
@@ -32,19 +28,22 @@ pub struct CuteChatApp {
     ollama_url: Arc<Mutex<String>>,              // Ollama API URL
     ollama_model: Arc<Mutex<String>>,            // Ollama model name
     show_config_dialog: Arc<Mutex<bool>>,        // Whether to show the config dialog
+    ollama_system_prompt: Arc<Mutex<String>>,
+    chat_mode: Arc<Mutex<bool>>,        // Whether to show the config dialog
 }
 
 impl CuteChatApp {
     pub fn new() -> Self {
         Self {
             messages: Arc::new(Mutex::new(vec![
-                ("friend".to_owned(), "Hi there! 💖".to_owned()),
-                ("user".to_owned(), "Hello! How are you? 😊".to_owned()),
-                (
-                    "friend".to_owned(),
-                    "I’m great! How about you? 🌸".to_owned(),
-                ),
-            ])),
+                // ("assistant".to_owned(), "Hi there! 💖".to_owned()),
+                // ("user".to_owned(), "Hello! How are you? 😊".to_owned()),
+                // (
+                //     "assistant".to_owned(),
+                //     "I’m great! How about you? 🌸".to_owned(),
+                // ),
+            ]
+            )),
             input_text: Arc::new(Mutex::new(String::new())),
             streaming_message: Arc::new(Mutex::new(None)),
             streamed_words: Arc::new(Mutex::new(Vec::new())),
@@ -53,6 +52,8 @@ impl CuteChatApp {
             ollama_url: Arc::new(Mutex::new("http://localhost:11434".to_owned())), // Default URL
             ollama_model: Arc::new(Mutex::new("llama3.2".to_owned())),
             show_config_dialog: Arc::new(Mutex::new(false)),
+            ollama_system_prompt: Arc::new(Mutex::new(String::from("You are a young dyamic and talkative assistant"))),
+            chat_mode: Arc::new(Mutex::new(true)),
         }
     }
 
@@ -65,29 +66,51 @@ impl CuteChatApp {
         let messages = self.messages.clone();
         let input_field = self.input_text.clone();
 
-        let ollama_url = format!("{}/api/generate",self.ollama_url.lock().unwrap().clone());
+        let ollama_url = self.ollama_url.lock().unwrap().clone();
         let ollama_model = self.ollama_model.lock().unwrap().clone();
 
+        let system_message = {
+            // Lock `system_prompt` and clone its value
+            self.ollama_system_prompt.lock().unwrap().clone()
+        };
+
+        let mut ollama_messages = self.messages
+            .lock()
+            .unwrap()
+            .clone();
+        ollama_messages.insert(0, ("system".to_owned(), system_message));
+
+        let chat_mode = self.chat_mode.lock().unwrap().clone();
 
         // TODO: handle properly
         // Save the stop signal to indicate we are not stopping streaming
         // *self.stop_streaming.lock().unwrap() = false;
 
         tokio::spawn(async move {
-            let input_guard = input.clone();
+            // let input_guard = input.clone();
 
-            ollama(&*ollama_url, &ollama_model, &input, |token| {
-                streamed_words.lock().unwrap().push(token.parse().unwrap());
-            })
-                .await
-                .expect("error");
+            if chat_mode {
+                ollama_with_messages(&*ollama_url, &ollama_model, &ollama_messages, |token| {
+                    streamed_words.lock().unwrap().push(token.parse().unwrap());
+                })
+                    .await
+                    .expect("error");
+
+            } else {
+                ollama(&*ollama_url, &ollama_model, &input, |token| {
+                    streamed_words.lock().unwrap().push(token.parse().unwrap());
+                })
+                    .await
+                    .expect("error");
+            }
+
 
             // Finalize the message when all words are streamed
             let final_message = streamed_words.lock().unwrap().join(" ");
             messages
                 .lock()
                 .unwrap()
-                .push(("friend".to_owned(), final_message));
+                .push(("assistant".to_owned(), final_message));
 
             streamed_words.lock().unwrap().clear();
 
@@ -100,6 +123,8 @@ impl CuteChatApp {
         if *show_dialog {
             let mut url = self.ollama_url.lock().unwrap().clone(); // Get a copy to work with
             let mut model = self.ollama_model.lock().unwrap().clone();
+            let mut ollama_system_prompt = self.ollama_system_prompt.lock().unwrap().clone();
+            let mut chat_mode = self.chat_mode.lock().unwrap().clone();
 
             egui::Window::new("Ollama Configuration")
                 .collapsible(false)
@@ -116,13 +141,17 @@ impl CuteChatApp {
                         *self.ollama_model.lock().unwrap() = model.clone(); // Write back changes
                     }
 
+                    if ui.checkbox(&mut chat_mode, "Chat Mode:").changed() {
+                        *self.chat_mode.lock().unwrap() = chat_mode.clone(); // Write back changes
+                    };
+
+                    ui.label("System Prompt");
+                    if ui.text_edit_multiline(&mut ollama_system_prompt).changed() {
+                        *self.ollama_system_prompt.lock().unwrap() = ollama_system_prompt.clone(); // Write back changes
+                    }
+
                     ui.horizontal(|ui| {
-                        if ui.button("Save").clicked() {
-                            *self.ollama_url.lock().unwrap() = url.clone();
-                            *self.ollama_model.lock().unwrap() = model.clone();
-                            *show_dialog = false;
-                        }
-                        if ui.button("Cancel").clicked() {
+                        if ui.button("Close").clicked() {
                             *show_dialog = false;
                         }
                     });
@@ -146,6 +175,7 @@ impl CuteChatApp {
         // Read the current values
         let ollama_url = self.ollama_url.lock().unwrap();
         let ollama_model = self.ollama_model.lock().unwrap();
+        let chat_mode = self.chat_mode.lock().unwrap();
 
         // Add a small section with the configuration details
         ui.horizontal(|ui| {
@@ -158,6 +188,12 @@ impl CuteChatApp {
             ui.add_space(20.0); // Add some spacing between URL and Model
             ui.label(
                 RichText::new(format!("Model: {}", ollama_model))
+                    .small() // Make the font smaller
+                    .color(egui::Color32::GRAY),
+            );
+            ui.add_space(20.0); // Add some spacing between URL and Model
+            ui.label(
+                RichText::new(format!("Chat Mode: {}", chat_mode))
                     .small() // Make the font smaller
                     .color(egui::Color32::GRAY),
             );
@@ -181,9 +217,10 @@ impl CuteChatApp {
                 ui.vertical(|ui| {
                     let messages = self.messages.lock().unwrap();
                     for (sender, msg) in messages.iter() {
-                        if sender == "friend" {
+                        if sender == "assistant" {
                             ui.with_layout(egui::Layout::top_down(Align::Min), |ui| {
-                                ui.colored_label(Color32::DARK_GREEN, format!("🐾 {}", msg));
+                                let pink = Color32::from_rgb(255, 105, 180); // RGB values for a bright pink
+                                ui.colored_label(pink, format!("🐾 {}", msg));
                             });
                         } else {
                             ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
@@ -195,7 +232,7 @@ impl CuteChatApp {
                     if let Ok(streamed_words) = self.streamed_words.lock() {
                         let streamed = streamed_words.join(" "); // Join in the UI thread only for displaying
                         if !streamed_words.is_empty() {
-                            ui.colored_label(Color32::DARK_BLUE, format!("🐾 {}", streamed));
+                            ui.colored_label(Color32::LIGHT_BLUE, format!("🐾 {}", streamed));
                         }
                     }
                 });
@@ -218,15 +255,13 @@ impl CuteChatApp {
 
             // Detect Enter key press
             if text_edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                self.start_streaming(input_text.clone());
                 self.send_message(&input_text);
+                self.start_streaming(input_text.clone());
             }
 
-            // Send button
-            if ui.button("❤️ Send").clicked() {
-                self.start_streaming(input_text.clone());
+            if ui.button("❤ Send").clicked() {
                 self.send_message(&input_text);
-                // self.start_streaming(&input_text, );
+                self.start_streaming(input_text.clone());
             }
         });
     }

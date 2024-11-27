@@ -1,11 +1,25 @@
 use futures::StreamExt;
 use reqwest::Client;
+use serde::de::StdError;
 use serde::Deserialize;
 use std::error::Error;
+use std::future::Future;
 
 #[derive(Deserialize, Debug)]
-struct ResponseData {
+struct GenerateData {
     response: String,
+    done: bool,
+}
+
+#[derive(Deserialize, Debug)]
+struct MessageData {
+    content: String,
+    role: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct ChatData {
+    message: MessageData,
     done: bool,
 }
 
@@ -15,47 +29,96 @@ struct ResponseData {
 /// - `model`: The name of the model to use.
 /// - `prompt`: The prompt input for the model.
 /// - `on_token`: A function to execute for each received token.
+use serde_json::{json, Value};
 
-pub async fn ollama<F>(url: &str, model: &str, prompt: &str, on_token: F) -> Result<(), Box<dyn Error>>
+fn convert_to_json(model: &str, messages: &Vec<(String, String)>) -> serde_json::Value {
+    // Transform messages into the desired format
+    let formatted_messages: Vec<serde_json::Value> = messages
+        .iter()
+        .map(|(user, text)| {
+            json!({
+                "role": user,
+                "content": text
+            })
+        })
+        .collect();
+
+    // Build the JSON structure
+    json!({
+        "model": model,
+        "messages": formatted_messages
+    })
+}
+
+pub async fn ollama<F>(
+    base_url: &str,
+    model: &str,
+    prompt: &str,
+    on_token: F,
+) -> Result<(), Box<dyn Error>>
 where
-    F: Fn(&str) + Send + Sync, // `on_token` must be callable from multiple threads
+    F: Fn(&str) + Send + Sync,
+{
+    let url = format!("{}/api/generate", base_url);
+    let json = json!({
+        "model": model.to_string(),
+        "prompt": prompt
+    });
+
+    process_stream(&url, json, on_token, |buffer| {
+        serde_json::from_slice::<GenerateData>(&buffer).map(|json| (json.response, json.done))
+    })
+        .await
+}
+
+pub async fn ollama_with_messages<F>(
+    base_url: &str,
+    model: &str,
+    messages: &Vec<(String, String)>,
+    on_token: F,
+) -> Result<(), Box<dyn Error>>
+where
+    F: Fn(&str) + Send + Sync,
+{
+    let url = format!("{}/api/chat", base_url);
+    let json = convert_to_json(model, messages);
+
+    process_stream(&url, json, on_token, |buffer| {
+        serde_json::from_slice::<ChatData>(&buffer).map(|json| (json.message.content, json.done))
+    })
+        .await
+}
+
+async fn process_stream<F, P>(
+    url: &str,
+    json: Value,
+    on_token: F,
+    parse_chunk: P,
+) -> Result<(), Box<dyn Error>>
+where
+    F: Fn(&str) + Send + Sync,
+    P: Fn(&[u8]) -> Result<(String, bool), serde_json::Error>,
 {
     let client = Client::new();
-
-    // Send a POST request
-    let response = client
-        .post(url.to_string())
-        .json(&serde_json::json!({
-            "model": model.to_string(),
-            "prompt": prompt
-        }))
-        .send()
-        .await?;
-
-    // print!("{}", response.headers().clone().un);
-
-    // Stream the response body line by line
+    let response = client.post(url).json(&json).send().await?;
     let mut stream = response.bytes_stream();
     let mut buffer = Vec::new();
-
 
     while let Some(chunk) = stream.next().await {
         match chunk {
             Ok(bytes) => {
                 buffer.extend_from_slice(&bytes);
-
-                // Attempt to process as valid JSON
-                if let Ok(json) = serde_json::from_slice::<ResponseData>(&buffer) {
-
-                    on_token(&json.response);
-
-                    // Stop when `done` is true
-                    if json.done {
-                        break;
+                match parse_chunk(&buffer) {
+                    Ok((token, done)) => {
+                        on_token(&token);
+                        if done {
+                            break;
+                        }
+                        buffer.clear();
                     }
-
-                    // Clear the buffer after successful parse
-                    buffer.clear();
+                    Err(_) => {
+                        // Wait for more data to parse successfully
+                    }
                 }
             }
             Err(e) => {
