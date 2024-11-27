@@ -231,7 +231,7 @@ impl CuteChatApp {
                                 ui.colored_label(pink, format!("🐾 {}", msg));
                             });
                         } else {
-                            ui.with_layout(Layout::right_to_left(Align::Min), |ui| {
+                            ui.with_layout(Layout::top_down(Align::Max), |ui| {
                                 ui.colored_label(Color32::ORANGE, format!("{} 🌟", msg));
                             });
                         }
