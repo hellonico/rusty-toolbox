@@ -1,11 +1,12 @@
 use chrono::Local;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{env, io, thread};
+use std::fs::File;
 #[cfg(target_os = "windows")]
 use winapi::um::winbase::DETACHED_PROCESS;
 
@@ -67,15 +68,17 @@ impl RecordingApp {
         thread::spawn(move || {
             #[cfg(target_os = "macos")]
             let ffmpeg_cmd =
-                Command::new("ffmpeg")
-                    .arg("-f")
-                    .arg("avfoundation")
-                    .arg("-i")
-                    .arg("1:0") // Adjust devices for your system
-                    .arg("-framerate")
-                    .arg("30")
-                    .arg(&output_file) // Use dynamically generated filename
+                Command::new("bash").arg("-c").arg(format!("ffmpeg -f avfoundation -i 1.0 -framerate 30 {}", &output_file))
+                // Command::new("ffmpeg")
+                //     .arg("-f")
+                //     .arg("avfoundation")
+                //     .arg("-i")
+                //     .arg("1:0") // Adjust devices for your system
+                //     .arg("-framerate")
+                //     .arg("30")
+                //     .arg(&output_file) // Use dynamically generated filename
                     .stdin(Stdio::piped()) // Open stdin for sending commands
+                    .stdout(Stdio::piped()) // Pipe stdout to capture logs
                     .spawn()
                     .expect("Failed to start ffmpeg");
 
@@ -98,6 +101,7 @@ impl RecordingApp {
                     .spawn()
                     .expect("Failed to start ffmpeg");
             // Lock the process and store it
+
             *process_lock.lock().unwrap() = Some(ffmpeg_cmd);
         });
     }

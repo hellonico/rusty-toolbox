@@ -1,0 +1,20 @@
+[package]
+name = "app-convert-png-to-icns"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = "0.24.6"
+icns = "0.3.1"
+eframe = "0.29.1"
+lib_egui_utils = { path = "../lib-egui-utils" }
+
+[package.metadata.bundle.bin.app-convert-png-to-icns]
+name = "Dandy"
+identifier = "info.hellonico.dandy"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "app-convert-png-to-icns"
+path = "src/bin/dandy.rs"

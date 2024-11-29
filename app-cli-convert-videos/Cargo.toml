@@ -16,7 +16,7 @@ lib_egui_utils = { path = "../lib-egui-utils" }
 open = "5.3.1"
 rand = "0.8.3"
 
-[package.metadata.bundle]
+[package.metadata.bundle.bin.app-cli-convert-videos]
 name = "BeeVEe"
 identifier = "info.hellonico.beevee"
 icon = ["icon.icns"] # Path to your app's icon (optional)
@@ -24,6 +24,5 @@ version = "1.0.0"
 #resources = ["resources"] # Path to additional resources
 
 [[bin]]
-name = "bee"
-path = "src/bin/ui_convert_videos.rs"
-icon = ["icon.png"] #
+name = "app-cli-convert-videos"
+path = "src/bin/ui.rs"

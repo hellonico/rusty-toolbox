@@ -92,8 +92,7 @@ fn main() {
     //     ..Default::default()
     // };
     let native_options =
-        my_default_options(500.0, 300.0, include_bytes!("../mafalda.png"));
-
+        my_default_options(500.0, 300.0, include_bytes!("../../icon.png"));
 
     eframe::run_native(
         "Screen Recorder for Mum", // Updated app name

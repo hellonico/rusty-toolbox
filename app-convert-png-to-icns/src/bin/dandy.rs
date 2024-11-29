@@ -1,10 +1,13 @@
 use std::error::Error;
 use eframe::{egui};
 use std::path::Path;
-use app_cli_convert_png_to_icns::png_to_icns;
+use app_convert_png_to_icns::png_to_icns;
+use lib_egui_utils::my_default_options;
 
 fn main() -> Result<(), eframe::Error> {
-    let options = eframe::NativeOptions::default();
+    let options =
+        my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
+
     eframe::run_native(
         "PNG to ICNS Converter",
         options,

@@ -1,8 +1,8 @@
-input_folder: /Volumes/518/SCREENS2
-output_folder: /Volumes/518/SCREENS3
+input_folder: /Users/niko/Downloads
+output_folder: /Users/niko/Desktop
 video_format: mp4
 audio_format: aac
-file_extension: mov
+file_extension: mp4
 delete_original: false
-skip_if_exists: true
+skip_if_exists: false
 encoding: libx265

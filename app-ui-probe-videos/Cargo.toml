@@ -18,3 +18,13 @@ lib_egui_utils = { path = "../lib-egui-utils" }
 dirs = "5.0.1"
 chrono = "0.4.38"
 trash = "5.2.0"
+
+[package.metadata.bundle.bin.app-ui-probe-videos]
+name = "Probe"
+identifier = "info.hellonico.probe"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "app-ui-probe-videos"
+path = "src/bin/ui.rs"

@@ -40,7 +40,7 @@ pub struct FileStat {
 
 
 pub fn encode_video(file: PathBuf, encoding: &String, output_file: &String, audio: &String) -> io::Result<ExitStatus> {
-    let status = Command::new("ffmpeg")
+    let status = Command::new("/opt/homebrew/bin/ffmpeg")
         .arg("-hwaccel")
         .arg("auto")
         .arg("-i")
@@ -53,5 +53,6 @@ pub fn encode_video(file: PathBuf, encoding: &String, output_file: &String, audi
         .arg(audio)
         .arg(&output_file)
         .status();
+    
     status
 }

@@ -19,3 +19,13 @@ regex = "1.11.1"
 rfd = "0.15.0"
 dirs = "5.0.1"
 lib_egui_utils = { path = "../lib-egui-utils" }
+
+[package.metadata.bundle.bin.tunelling]
+name = "Tunelling"
+identifier = "info.hellonico.tunelling"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "tunelling"
+path = "src/main.rs"

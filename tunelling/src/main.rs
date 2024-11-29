@@ -555,7 +555,7 @@ fn read_tunnels(file_path: PathBuf) -> Vec<Tunnel> { // Skip lines starting with
                 // Generate a default command
                 let port = next_port;
                 next_port += 1; // Increment the port for the next tunnel
-                format!("ssh {} -L {}:127.0.0.1:3389", name, port)
+                format!("ssh -N -C {} -L {}:localhost:3389", name, port)
             } else {
                 cmd.to_string()
             }

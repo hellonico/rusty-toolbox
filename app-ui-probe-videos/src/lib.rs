@@ -35,7 +35,7 @@ pub struct Metadata {
 
 pub fn extract_metadata(video_path: String) -> Metadata {
     // Run the ffprobe command
-    let output = Command::new("ffprobe")
+    let output = Command::new("/opt/homebrew/bin/ffprobe")
         .arg("-v")
         .arg("quiet")
         .arg("-print_format")
@@ -48,6 +48,7 @@ pub fn extract_metadata(video_path: String) -> Metadata {
 
     // Parse and print the JSON output
     let metadata_string = String::from_utf8_lossy(&output.stdout);
+    println!("Extracted metadata:\n{}", metadata_string);
 
     // Parse JSON into the Metadata struct
     let metadata: Metadata = from_str(metadata_string.as_ref()).expect("Failed to parse JSON");
@@ -69,7 +70,7 @@ pub fn extract_frame(video_path: &str, timestamp: &str, output_image: &str) -> R
     //         output_image,             // Output image file
     //     ])
     //     .output();
-    let output = Command::new("ffmpeg")
+    let output = Command::new("/opt/homebrew/bin/ffmpeg")
         .args(&[
             "-i", video_path,           // Input video file
             "-ss", timestamp,           // Timestamp to extract (e.g., "00:00:01")

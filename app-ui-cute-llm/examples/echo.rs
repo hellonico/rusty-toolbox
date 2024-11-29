@@ -7,7 +7,7 @@ fn configure_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
     fonts.font_data.insert(
         "CuteFont".to_owned(),
-        egui::FontData::from_static(include_bytes!("../../SourGummy-Thin.ttf")),
+        egui::FontData::from_static(include_bytes!("../SourGummy-Thin.ttf")),
     );
     fonts.families.get_mut(&egui::FontFamily::Proportional).unwrap().insert(0, "CuteFont".to_owned());
     ctx.set_fonts(fonts);

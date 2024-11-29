@@ -1,5 +1,5 @@
 use std::path::Path;
-use app_cli_convert_png_to_icns::png_to_icns;
+use app_convert_png_to_icns::png_to_icns;
 
 fn main(){
     let input = std::env::args().nth(1).unwrap();

@@ -410,15 +410,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
-name = "app-cli-convert-png-to-icns"
-version = "0.1.0"
-dependencies = [
- "eframe 0.29.1",
- "icns",
- "image 0.24.9",
-]
-
-[[package]]
 name = "app-cli-convert-videos"
 version = "0.1.0"
 dependencies = [
@@ -443,6 +434,16 @@ dependencies = [
  "eframe 0.29.1",
  "rusb",
  "tokio",
+]
+
+[[package]]
+name = "app-convert-png-to-icns"
+version = "0.1.0"
+dependencies = [
+ "eframe 0.29.1",
+ "icns",
+ "image 0.24.9",
+ "lib_egui_utils",
 ]
 
 [[package]]
@@ -474,6 +475,21 @@ dependencies = [
  "serde_json",
  "tokio",
  "trash",
+]
+
+[[package]]
+name = "app-ui-system-stats"
+version = "0.2.0"
+dependencies = [
+ "battery",
+ "eframe 0.29.1",
+ "egui 0.29.1",
+ "egui-winit 0.29.1",
+ "egui_extras",
+ "get_if_addrs",
+ "lib_egui_utils",
+ "lib_os_utils",
+ "sysinfo",
 ]
 
 [[package]]
@@ -7138,21 +7154,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7065abeca94b6a8a577f9bd45aa0867a2238b74e8eb67cf10d492bc39351394"
 dependencies = [
  "futures-core",
-]
-
-[[package]]
-name = "syshello"
-version = "0.2.0"
-dependencies = [
- "battery",
- "eframe 0.29.1",
- "egui 0.29.1",
- "egui-winit 0.29.1",
- "egui_extras",
- "get_if_addrs",
- "lib_egui_utils",
- "lib_os_utils",
- "sysinfo",
 ]
 
 [[package]]

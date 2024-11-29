@@ -22,6 +22,16 @@ lib_egui_utils = { path = "../lib-egui-utils" }
 winapi = { version = "0.3.9", features = ["audiosessiontypes", "audioclient", "coml2api", "combaseapi", "debug", "devpkey", "handleapi", "ksmedia", "mmdeviceapi", "objbase", "std", "synchapi", "winbase", "winuser"] }
 
 
+[package.metadata.bundle.bin.video-recorder-for-mum]
+name = "Mommy"
+identifier = "info.hellonico.mommy"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "video-recorder-for-mum"
+path = "src/bin/recordingui.rs"
+
 [[bin]]
 name = "recordingcli"
 path = "src/bin/recordingcli.rs"

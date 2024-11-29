@@ -1,5 +1,5 @@
 [package]
-name = "syshello"
+name = "app-ui-system-stats"
 version = "0.2.0"
 edition = "2021"
 
@@ -14,3 +14,14 @@ get_if_addrs = "0.5.3"
 lib_os_utils = { path = "../lib-os-utils" }
 battery = "0.7.8"
 lib_egui_utils = { path = "../lib-egui-utils" }
+
+
+[package.metadata.bundle.bin.app-ui-system-stats]
+name = "Syster"
+identifier = "info.hellonico.syster"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "app-ui-system-stats"
+path = "src/main.rs"

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "app-ui-cute-llm",
     "tunelling",
     "ui-extract-audio",
     "app-ui-system-stats",
@@ -10,13 +11,15 @@ members = [
     "video-recorder-for-mum",
     "app-ui-bmi-for-dummies",
     "sample-wasm-plotting",
-    "fahrenheit_to_celsius_server", "fahrenheit_to_celsius_wasm", "fahrenheit_to_celsius_egui", "app-ui-screenshot-every-five-seconds", "app-cli-show-usb-devices", "app-cli-convert-videos", "lib-egui-utils", "cli-search", "app-ui-probe-videos", "app-ui-cute-llm", "lib-ollama-utils", "app-cli-convert-png-to-icns", ]
-default-members = [
+    "fahrenheit_to_celsius_server",
+    "fahrenheit_to_celsius_wasm",
+    "fahrenheit_to_celsius_egui",
+    "app-ui-screenshot-every-five-seconds",
+    "app-cli-show-usb-devices",
     "app-cli-convert-videos",
-    "tunelling",
-    "video-recorder-for-mum",
-    "ui-extract-audio",
-    "app-ui-cute-llm",
+    "lib-egui-utils",
+    "cli-search",
     "app-ui-probe-videos",
-    "app-ui-system-stats"
-]
+    "lib-ollama-utils",
+    "app-convert-png-to-icns", ]
+
