@@ -9,6 +9,8 @@ use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
+use eframe::egui::{Align, Layout};
+use rand::Rng;
 
 // Main application structure
 struct MyApp {
@@ -68,6 +70,28 @@ impl MyApp {
         app
     }
 
+    fn add_debug_stats(&self) {
+        let mut stats = self.file_stats.lock().unwrap();
+        let mut rng = rand::thread_rng();
+
+        // rng.gen_range()
+        for _ in 0..50 {
+            let input_size: f64 = rng.gen_range(100.0..1000000.0);
+            let output_size: Option<f64> = Some(rng.gen_range(1.0..1000.0));
+            let reduction: Option<f64> = Some(rng.gen_range(0.0..10.0));
+            let elapsed_time: Option<f64> = Some(rng.gen_range(0.01..3600.0)); // seconds
+            let output_file: Option<String> = None; // Always None for now
+
+            stats.push(FileStat {
+                input_file: "hello.mp4".to_string(),
+                input_size,
+                output_size,
+                reduction,
+                elapsed_time,
+                output_file,
+            });
+        }
+    }
 
     fn save_config(&self) {
         let config = AppConfig {
@@ -190,8 +214,22 @@ impl eframe::App for MyApp {
         install_image_loaders(ctx);
         self.update_progress();
 
+        egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+            egui::menu::bar(ui, |ui| {
+                ui.menu_button("Menu", |ui| {
+                    // Add the toggleable "Show Command" button
+                    if ui.button("Add debug items").clicked() {
+                        self.add_debug_stats();
+                    }
+                    if ui.button("Clean items").clicked() {
+                        self.file_stats.lock().unwrap().clear();
+                    }
+                })
+            })
+        });
+
         CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
+            ui.with_layout(Layout::top_down(Align::LEFT), |ui| {
 
                 // Left panel
                 ui.vertical(|ui| {
@@ -276,12 +314,15 @@ impl eframe::App for MyApp {
                     ));
                     ui.add(ProgressBar::new(self.progress).text(format!("{:.0}%", self.progress * 100.0)));
 
-                    ui.heading(RichText::new(format!("{} File Stats", icons::COMPUTER_LINE)).size(20.0));
+                    ui.heading(RichText::new(format!("{} File Stats ({})", icons::COMPUTER_LINE, self.file_stats.lock().unwrap().len())).size(20.0));
                     egui::ScrollArea::vertical() // or `horizontal()` or `both()` depending on your needs )
-                        // .max_height(300.0)
-                        .max_height(ui.available_height())
-                        .min_scrolled_height(200.0)
+                        // .min_scrolled_height(300.0)
+                        // .max_height()
                         .show(ui, |ui| {
+
+                            // ui.set_min_width(ui.available_width());
+                            // ui.set_min_height(ui.available_height());
+
                             egui::Grid::new("file_stats_table")
                                 //.min_col_width(250.0)
                                 .striped(true)
@@ -308,7 +349,7 @@ impl eframe::App for MyApp {
                                         ).on_hover_text("Open Input File")
                                             .clicked()
                                             .then(|| {
-                                                open::that(PathBuf::from(&stat.input_file)).expect("Cannot open input file");
+                                                open::that(PathBuf::from(&stat.input_file)).unwrap_or(());
                                             });
                                         // if ui.add(egui::Image::new(include_image!("../../link_input.png"))).clicked() {
                                         //     println!("Opening: {}", stat.input_file);

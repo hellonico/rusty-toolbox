@@ -1,0 +1,9 @@
+[package]
+name = "app-cli-convert-png-to-icns"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = "0.24.6"
+icns = "0.3.1"
+eframe = "0.29.1"
