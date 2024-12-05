@@ -12,17 +12,19 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Chess AI",
         eframe::NativeOptions::default(),
-        Box::new(|_| Ok(Box::new(ChessApp {
-            board,
-            selected_square: None,
-            highlighted_moves: vec![],
-            best_moves: vec![],
-            move_history: vec![],
-            player_vs_ai: true,
-            ai_personality: "Balanced".to_string(),
-            ai_elo: 1200,
-            status_message: Some("".to_string()),
-        }))),
+        Box::new(|_| {
+            Ok(Box::new(ChessApp {
+                board,
+                selected_square: None,
+                highlighted_moves: vec![],
+                best_moves: vec![],
+                move_history: vec![],
+                player_vs_ai: true,
+                ai_personality: "Balanced".to_string(),
+                ai_elo: 1200,
+                status_message: Some("".to_string()),
+            }))
+        }),
     )
 }
 
@@ -43,7 +45,6 @@ impl eframe::App for ChessApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             self.render_menu(ui);
             ui.horizontal(|ui| {
-
                 let can_undo = self.move_history.len() > 0;
                 if ui.add_enabled(can_undo, Button::new("Undo Move")).clicked() {
                     self.undo_last_move();
@@ -68,11 +69,31 @@ impl eframe::App for ChessApp {
                 egui::ComboBox::from_label("Personality")
                     .selected_text(&self.ai_personality)
                     .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut self.ai_personality, "Childish".to_string(), "Childish");
-                        ui.selectable_value(&mut self.ai_personality, "Aggressive".to_string(), "Aggressive");
-                        ui.selectable_value(&mut self.ai_personality, "Defensive".to_string(), "Defensive");
-                        ui.selectable_value(&mut self.ai_personality, "Exchange-Prone".to_string(), "Exchange-Prone");
-                        ui.selectable_value(&mut self.ai_personality, "Balanced".to_string(), "Balanced");
+                        ui.selectable_value(
+                            &mut self.ai_personality,
+                            "Childish".to_string(),
+                            "Childish",
+                        );
+                        ui.selectable_value(
+                            &mut self.ai_personality,
+                            "Aggressive".to_string(),
+                            "Aggressive",
+                        );
+                        ui.selectable_value(
+                            &mut self.ai_personality,
+                            "Defensive".to_string(),
+                            "Defensive",
+                        );
+                        ui.selectable_value(
+                            &mut self.ai_personality,
+                            "Exchange-Prone".to_string(),
+                            "Exchange-Prone",
+                        );
+                        ui.selectable_value(
+                            &mut self.ai_personality,
+                            "Balanced".to_string(),
+                            "Balanced",
+                        );
                     });
             });
 
@@ -130,15 +151,6 @@ impl ChessApp {
         pgn
     }
 
-
-    // fn pgn_to_bitmove(&self, pgn: &str) -> Result<BitMove, String> {
-    //     // Implement conversion from PGN notation to BitMove
-    //     // This depends on your chess engine, but here's a generic example:
-    //
-    //     // self.board.parse_pgn_move(pgn).map_err(|e| format!("Invalid move: {}", e))
-    //     // Bit
-    // }
-
     fn parse_pgn(&mut self, pgn: &str) -> Result<(), String> {
         let lines: Vec<&str> = pgn.lines().collect();
         let mut headers = true;
@@ -171,7 +183,6 @@ impl ChessApp {
         Ok(())
     }
 
-
     fn import_pgn(&mut self) {
         // Open file dialog to select a PGN file
         if let Some(path) = rfd::FileDialog::new()
@@ -203,13 +214,13 @@ impl ChessApp {
     }
     fn reset_game(&mut self) {
         self.board = Board::default(); // Reset the board to the default starting position
-        self.selected_square = None;  // Clear any selected squares
+        self.selected_square = None; // Clear any selected squares
         self.highlighted_moves.clear(); // Clear highlighted moves
-        self.best_moves.clear();       // Clear best moves
-        self.move_history.clear();     // Clear move history
-        self.player_vs_ai = true;      // Reset Player vs AI toggle (optional)
+        self.best_moves.clear(); // Clear best moves
+        self.move_history.clear(); // Clear move history
+        self.player_vs_ai = true; // Reset Player vs AI toggle (optional)
         self.ai_personality = "Balanced".to_string(); // Reset AI personality (optional)
-        self.ai_elo = 1200;            // Reset AI ELO (optional)
+        self.ai_elo = 1200; // Reset AI ELO (optional)
     }
     fn check_game_over(&self, ui: &mut egui::Ui) {
         if self.board.checkmate() {
@@ -254,13 +265,18 @@ impl ChessApp {
                     for file in 0..8 {
                         let square_index = rank * 8 + file;
                         let piece = self.board.piece_at_sq(SQ::from(square_index));
-                        let square_color = self.get_square_color(square_index as usize, rank as usize, file as usize);
+                        let square_color = self.get_square_color(
+                            square_index as usize,
+                            rank as usize,
+                            file as usize,
+                        );
                         let piece_char = piece_to_char(piece);
 
                         if ui
                             .add_sized(
                                 [50.0, 50.0],
-                                egui::Button::new(RichText::new(piece_char).size(40.0).strong()).fill(square_color),
+                                egui::Button::new(RichText::new(piece_char).size(40.0).strong())
+                                    .fill(square_color),
                             )
                             .clicked()
                         {
@@ -334,10 +350,8 @@ impl ChessApp {
     }
 
     fn undo_last_move(&mut self) {
-        // self.board.can_
-        if let _ = self.board.undo_move() {
-            self.move_history.pop();
-        }
+        self.board.undo_move();
+        self.move_history.pop();
     }
 
     fn make_ai_move(&mut self) {
@@ -346,8 +360,14 @@ impl ChessApp {
 
         let ai_move = match self.ai_personality.as_str() {
             "Childish" => moves.first().cloned(),
-            "Aggressive" => moves.iter().max_by_key(|m| self.evaluate_aggressiveness(m)).cloned(),
-            "Defensive" => moves.iter().min_by_key(|m| self.evaluate_aggressiveness(m)).cloned(),
+            "Aggressive" => moves
+                .iter()
+                .max_by_key(|m| self.evaluate_aggressiveness(m))
+                .cloned(),
+            "Defensive" => moves
+                .iter()
+                .min_by_key(|m| self.evaluate_aggressiveness(m))
+                .cloned(),
             "Exchange-Prone" => moves.iter().find(|m| self.is_exchange_move(m)).cloned(),
             _ => moves.iter().max_by_key(|m| self.evaluate_board(m)).cloned(),
         };
@@ -378,11 +398,15 @@ impl ChessApp {
         for square in 0..64 {
             match board.piece_at_sq(SQ::from(square)) {
                 pleco::core::Piece::WhitePawn => white_score += 1,
-                pleco::core::Piece::WhiteKnight | pleco::core::Piece::WhiteBishop => white_score += 3,
+                pleco::core::Piece::WhiteKnight | pleco::core::Piece::WhiteBishop => {
+                    white_score += 3
+                }
                 pleco::core::Piece::WhiteRook => white_score += 5,
                 pleco::core::Piece::WhiteQueen => white_score += 9,
                 pleco::core::Piece::BlackPawn => black_score += 1,
-                pleco::core::Piece::BlackKnight | pleco::core::Piece::BlackBishop => black_score += 3,
+                pleco::core::Piece::BlackKnight | pleco::core::Piece::BlackBishop => {
+                    black_score += 3
+                }
                 pleco::core::Piece::BlackRook => black_score += 5,
                 pleco::core::Piece::BlackQueen => black_score += 9,
                 _ => {}
@@ -392,7 +416,6 @@ impl ChessApp {
         // Return the difference (positive for white advantage, negative for black advantage)
         white_score - black_score
     }
-
 
     fn is_exchange_move(&self, mv: &pleco::BitMove) -> bool {
         let mut cloned_board = self.board.clone();
@@ -414,7 +437,11 @@ impl ChessApp {
                 "{}. {}{}",
                 i + 1,
                 chunk.get(0).unwrap_or(&String::new()), // White's move
-                if let Some(black_move) = chunk.get(1) { format!(", {}", black_move) } else { "".to_string() } // Black's move
+                if let Some(black_move) = chunk.get(1) {
+                    format!(", {}", black_move)
+                } else {
+                    "".to_string()
+                }  // Black's move
             );
             moves.push(turn);
         }
