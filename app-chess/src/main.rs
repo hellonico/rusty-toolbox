@@ -1,4 +1,6 @@
 use eframe::egui;
+use eframe::egui::RichText;
+// use eframe::egui::WidgetText::RichText;
 use pleco::board::Board;
 use pleco::tools::eval::Eval;
 // use pleco::core::movenum::MoveList;
@@ -153,7 +155,7 @@ impl ChessApp {
                         if ui
                             .add_sized(
                                 [50.0, 50.0],
-                                egui::Button::new(piece_char).fill(square_color),
+                                egui::Button::new(RichText::new(piece_char).size(40.0)).fill(square_color),
                             )
                             .clicked()
                         {
