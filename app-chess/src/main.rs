@@ -1,5 +1,6 @@
 use eframe::egui;
 use eframe::egui::RichText;
+use egui::Color32;
 // use eframe::egui::WidgetText::RichText;
 use pleco::board::Board;
 use pleco::tools::eval::Eval;
@@ -155,7 +156,7 @@ impl ChessApp {
                         if ui
                             .add_sized(
                                 [50.0, 50.0],
-                                egui::Button::new(RichText::new(piece_char).size(40.0)).fill(square_color),
+                                egui::Button::new(RichText::new(piece_char).size(40.0).strong()).fill(square_color),
                             )
                             .clicked()
                         {
@@ -167,23 +168,23 @@ impl ChessApp {
             });
     }
 
-    fn get_square_color(&self, square_index: usize, rank: usize, file: usize) -> egui::Color32 {
+    fn get_square_color(&self, square_index: usize, rank: usize, file: usize) -> Color32 {
         let default_color = if (rank + file) % 2 == 0 {
-            egui::Color32::LIGHT_GRAY
+            Color32::LIGHT_GRAY
         } else {
-            egui::Color32::DARK_GRAY
+            Color32::DARK_GRAY
         };
 
         if Some(square_index) == self.selected_square {
-            return egui::Color32::YELLOW;
+            return Color32::KHAKI;
         }
 
         if self.highlighted_moves.contains(&square_index) {
-            return egui::Color32::GREEN;
+            return Color32::BLUE;
         }
 
         if self.best_moves.contains(&square_index) {
-            return egui::Color32::BLUE;
+            return Color32::GOLD;
         }
 
         default_color
