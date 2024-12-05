@@ -1,4 +1,3 @@
-use std::fmt::format;
 use std::fs::OpenOptions;
 use std::path::PathBuf;
 use std::process::Command;

@@ -8,3 +8,14 @@ eframe = "0.29.1"
 pleco = "0.5.0"
 rand = "0.9.0-beta.1"
 rfd = "0.15.1"
+lib_egui_utils = { path = "../lib-egui-utils" }
+
+[package.metadata.bundle.bin.app-chess]
+name = "cHessy"
+identifier = "info.hellonico.chessy"
+icon = ["icon.icns"]
+version = "1.0.0"
+
+[[bin]]
+name = "app-chess"
+path = "src/main.rs"

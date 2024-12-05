@@ -1,8 +1,11 @@
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
+use std::path::PathBuf;
 use image::{io::Reader as ImageReader, ImageFormat};
 use icns::{IconFamily, IconType, Image};
 use image::codecs::png::PngEncoder;
+use tempfile::{NamedTempFile, TempPath};
+use lib_ffmpeg_utils::append_to_home_log;
 
 pub fn png_to_icns(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Load the PNG image
@@ -24,9 +27,9 @@ pub fn png_to_icns(input_path: &str, output_path: &str) -> Result<(), Box<dyn st
     for (size, icon_type) in sizes {
         let resized = img.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
         for (size, icon_type) in sizes {
-            let temp = format!("{}.png", size);
             let resized = img.resize_exact(size, size, image::imageops::FilterType::Lanczos3);
-            resized.save(temp.clone())?;
+            let mut temp = NamedTempFile::with_suffix_in(".png", std::env::temp_dir()).unwrap();
+            resized.save(temp.path().display().to_string())?;
             let file = BufReader::new(File::open(temp).unwrap());
             let image = Image::read_png(file).unwrap();
             icon_family.add_icon(&image).unwrap()
@@ -37,6 +40,6 @@ pub fn png_to_icns(input_path: &str, output_path: &str) -> Result<(), Box<dyn st
     let mut file = File::create(output_path)?;
     icon_family.write(file)?;
 
-    println!("ICNS file created successfully!");
+    append_to_home_log("ICNS file created successfully!".parse().unwrap());
     Ok(())
 }

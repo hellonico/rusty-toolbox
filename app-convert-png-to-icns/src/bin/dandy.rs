@@ -3,6 +3,7 @@ use eframe::{egui};
 use std::path::Path;
 use app_convert_png_to_icns::png_to_icns;
 use lib_egui_utils::my_default_options;
+use lib_ffmpeg_utils::append_to_home_log;
 
 fn main() -> Result<(), eframe::Error> {
     let options =
@@ -39,16 +40,6 @@ impl eframe::App for MyApp {
             // Display the input file if available
             if let Some(input) = &self.input_path {
                 ui.label(format!("Input: {}", input));
-
-                // if ui.button("Convert to ICNS").clicked() {
-                //     let (output, res) = Self::do_convert(input);
-                //     self.output_path = Some(output.clone());
-                //     if let Err(e) = res {
-                //         ui.label(format!("Error: {}", e));
-                //     } else {
-                //         ui.label(format!("Successfully saved as {}", output));
-                //     }
-                // }
             } else {
                 ui.label("No file selected");
             }
@@ -63,6 +54,7 @@ impl eframe::App for MyApp {
                         let input = path.to_string_lossy().to_string();
                         self.input_path = Some(input.clone());
                         let (output, res) = Self::do_convert(&input.clone());
+                        append_to_home_log(format!("{}\n{:?}", output.clone(),res));
                         self.output_path = Some(output.clone());
                         if let Err(e) = res {
                             ui.label(format!("Error: {}", e));
@@ -92,7 +84,6 @@ impl MyApp {
             .to_str()
             .unwrap()
             .to_string();
-        // self.output_path = Some(output.clone());
         let res = png_to_icns(input, &output);
         (output, res)
     }

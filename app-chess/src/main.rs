@@ -1,3 +1,4 @@
+use std::process::exit;
 use eframe::egui;
 use eframe::egui::{Button, RichText};
 use egui::Color32;
@@ -6,12 +7,14 @@ use pleco::tools::eval::Eval;
 use pleco::{Player, SQ};
 use rand::rng;
 use rand::seq::SliceRandom;
+use lib_egui_utils::my_default_options;
 
 fn main() -> Result<(), eframe::Error> {
     let board = Board::default();
+    let options = my_default_options(900.0, 500.0, include_bytes!("../icon.png"));
     eframe::run_native(
         "Chess AI",
-        eframe::NativeOptions::default(),
+        options,
         Box::new(|_| {
             Ok(Box::new(ChessApp {
                 board,
@@ -98,14 +101,19 @@ impl eframe::App for ChessApp {
             });
 
             ui.separator();
-            self.render_board(ui);
-            self.check_game_over(ui);
-            ui.separator();
-            ui.heading("Move History");
-            let moves = self.moves_to_notation();
-            for turn in moves {
-                ui.label(turn);
-            }
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    self.render_board(ui);
+                    self.check_game_over(ui);
+                });
+                ui.vertical(|ui| {
+                    ui.heading("Move History");
+                    let moves = self.moves_to_notation();
+                    for turn in moves {
+                        ui.label(turn);
+                    }
+                })
+            });
         });
     }
 }
@@ -120,6 +128,9 @@ impl ChessApp {
             if ui.button("Export PGN").clicked() {
                 self.export_pgn();
                 ui.close_menu();
+            }
+            if ui.button("Quit").clicked() {
+                exit(0);
             }
         });
     }
