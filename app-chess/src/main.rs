@@ -11,7 +11,7 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Chess AI",
         eframe::NativeOptions::default(),
-        Box::new(|_| Box::new(ChessApp {
+        Box::new(|_| Ok(Box::new(ChessApp {
             board,
             selected_square: None,
             highlighted_moves: vec![],
@@ -20,7 +20,7 @@ fn main() -> Result<(), eframe::Error> {
             player_vs_ai: true,
             ai_personality: "Balanced".to_string(),
             ai_elo: 1200,
-        })),
+        }))),
     )
 }
 
@@ -44,7 +44,7 @@ impl eframe::App for ChessApp {
                 if ui.button("Undo Move").clicked() {
                     self.undo_last_move();
                 }
-                if ui.button("Replay Game").clicked() {
+                if ui.button("New Game").clicked() {
                     self.reset_game(); // Call the reset method
                 }
                 ui.checkbox(&mut self.player_vs_ai, "Player vs AI");
@@ -152,7 +152,7 @@ impl ChessApp {
 
                         if ui
                             .add_sized(
-                                [40.0, 40.0],
+                                [50.0, 50.0],
                                 egui::Button::new(piece_char).fill(square_color),
                             )
                             .clicked()
