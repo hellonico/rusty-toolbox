@@ -1,6 +1,7 @@
-use std::{fs, io};
+use std::{env, fs, io};
 use std::fs::File;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::time::SystemTime;
 use eframe::egui::{IconData, ViewportBuilder};
 use eframe::{egui, NativeOptions};
@@ -41,6 +42,29 @@ pub fn format_elapsed_time(duration: Option<f64>) -> String {
         "-".into()
     }
 
+}
+
+pub fn open_containing_folder(output_file: &String) {
+    let folder_path = env::current_dir().unwrap().display().to_string();
+    eprintln!("Opening: {} {}", folder_path, output_file );
+
+    #[cfg(target_os = "macos")]
+    Command::new("open")
+        .arg(folder_path.clone())
+        .spawn()
+        .expect("Failed to open folder");
+
+    #[cfg(target_os = "windows")]
+    Command::new("explorer")
+        .arg(folder_path)
+        .spawn()
+        .expect("Failed to open folder");
+
+    #[cfg(target_os = "linux")]
+    Command::new("xdg-open")
+        .arg(folder_path)
+        .spawn()
+        .expect("Failed to open folder");
 }
 
 

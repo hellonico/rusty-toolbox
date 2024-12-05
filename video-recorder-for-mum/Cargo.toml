@@ -16,6 +16,7 @@ config = "0.14.1"
 clap = "4.5.21"
 notify-rust = "4.11.3"
 lib_egui_utils = { path = "../lib-egui-utils" }
+lib-ffmpeg-utils = { path = "../lib-ffmpeg-utils" }
 # https://github.com/RustAudio/cpal/issues/342
 # probably do not need all those features... this is to avoid opening a shell
 #[target.'cfg(target_os = "windows")'.dependencies]

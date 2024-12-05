@@ -35,6 +35,7 @@ pub struct Metadata {
 
 pub fn extract_metadata(video_path: String) -> Metadata {
     // Run the ffprobe command
+
     let output = Command::new("/opt/homebrew/bin/ffprobe")
         .arg("-v")
         .arg("quiet")
@@ -70,6 +71,10 @@ pub fn extract_frame(video_path: &str, timestamp: &str, output_image: &str) -> R
     //         output_image,             // Output image file
     //     ])
     //     .output();
+    #[cfg(target_os = "linux")]
+    let output = Command::new("bash").args(&["-c", &format!("ffmpeg -i {} -ss {} -vframes 1 -vf scale=-1:200 -q:v 30 {}",video_path, timestamp, output_image)]).output();
+
+    #[cfg(not(target_os = "linux"))]
     let output = Command::new("/opt/homebrew/bin/ffmpeg")
         .args(&[
             "-i", video_path,           // Input video file
@@ -80,6 +85,7 @@ pub fn extract_frame(video_path: &str, timestamp: &str, output_image: &str) -> R
             output_image,               // Output image file
         ])
         .output();
+
 
     // Check the result of the command
     match output {

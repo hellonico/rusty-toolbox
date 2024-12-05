@@ -112,3 +112,49 @@ fn get_wifi_ssid_linux() -> Result<String, Box<dyn Error>> {
         ))))
     }
 }
+
+
+#[derive(Debug)]
+struct VpnStatus {
+    name: String,
+    status: String,
+}
+
+
+fn get_vpn_status() -> Result<VpnStatus, Box<dyn std::error::Error>> {
+    // Run the command
+    let output = Command::new("scutil")
+        .arg("--nc")
+        .arg("list")
+        .output()?;
+
+    // Check if the command was successful
+    if !output.status.success() {
+        return Err(format!("Command failed with status: {}", output.status).into());
+    }
+
+    // Parse the output
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    if let Some(last_line) = stdout.lines().last() {
+        // Extract status
+        let status = if last_line.contains("(Disconnected)") {
+            "Disconnected".to_string()
+        } else if last_line.contains("(Connected)") {
+            "Connected".to_string()
+        } else {
+            "Unknown".to_string()
+        };
+
+        // Extract VPN name
+        let name = last_line
+            .split('"')
+            .nth(1)
+            .unwrap_or("Unknown VPN Name")
+            .to_string();
+
+        // Return the result as a struct
+        return Ok(VpnStatus { name, status });
+    }
+
+    Err("No VPN status found.".into())
+}

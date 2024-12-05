@@ -1,8 +1,8 @@
 use reqwest::blocking::get;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize)]
-pub struct IpApiResponse {
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct Location {
     pub city: String,
     #[serde(rename = "regionName")]
     pub region_name: String,
@@ -12,7 +12,8 @@ pub struct IpApiResponse {
     pub isp: String,
 }
 
-pub fn get_location() -> Result<IpApiResponse, reqwest::Error> {
-    let response: IpApiResponse = get("http://ip-api.com/json")?.json()?;
+
+pub fn get_location() -> Result<Location, reqwest::Error> {
+    let response: Location = get("http://ip-api.com/json")?.json()?;
     Ok(response)
 }

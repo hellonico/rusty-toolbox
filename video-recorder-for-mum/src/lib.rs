@@ -9,6 +9,7 @@ use std::{env, io, thread};
 use std::fs::File;
 #[cfg(target_os = "windows")]
 use winapi::um::winbase::DETACHED_PROCESS;
+use lib_ffmpeg_utils::{append_to_home_log, get_base_ffmpeg_command};
 
 pub struct RecordingApp {
     pub recording_process: Arc<Mutex<Option<Child>>>,
@@ -27,28 +28,7 @@ impl Default for RecordingApp {
 }
 
 impl RecordingApp {
-    pub fn open_containing_folder(output_file: &String) {
-        let folder_path = env::current_dir().unwrap().display().to_string();
 
-        #[cfg(target_os = "macos")]
-        Command::new("open")
-            .arg(folder_path.clone())
-            .spawn()
-            .expect("Failed to open folder");
-
-        eprintln!("Opening: {} {}", output_file, folder_path);
-        #[cfg(target_os = "windows")]
-        Command::new("explorer")
-            .arg(folder_path)
-            .spawn()
-            .expect("Failed to open folder");
-
-        #[cfg(target_os = "linux")]
-        Command::new("xdg-open")
-            .arg(folder_path)
-            .spawn()
-            .expect("Failed to open folder");
-    }
     pub fn start_recording(&self) {
         let process_lock = self.recording_process.clone();
         let start_time_lock = self.start_time.clone();
@@ -66,17 +46,15 @@ impl RecordingApp {
         let default_device = self.get_audio_inputs().unwrap()[0].clone();
 
         thread::spawn(move || {
+            #[cfg(target_os = "linux")]
+            let mut ffmpeg_base_cmd = get_base_ffmpeg_command(format!("-video_size 1920x1080 -framerate 30 -f x11grab -i :0.0 -c:v libx264rgb -crf 0 -preset ultrafast -color_range 2 output.mp4 {}", &output_file));
+
             #[cfg(target_os = "macos")]
-            let ffmpeg_cmd =
-                Command::new("bash").arg("-c").arg(format!("ffmpeg -f avfoundation -i 1.0 -framerate 30 {}", &output_file))
-                // Command::new("ffmpeg")
-                //     .arg("-f")
-                //     .arg("avfoundation")
-                //     .arg("-i")
-                //     .arg("1:0") // Adjust devices for your system
-                //     .arg("-framerate")
-                //     .arg("30")
-                //     .arg(&output_file) // Use dynamically generated filename
+            let mut ffmpeg_base_cmd =
+                get_base_ffmpeg_command(format!("-f avfoundation -i 1:0 -framerate 30 /Users/niko/Desktop/{}", &output_file));
+
+            #[cfg(not(target_os = "windows"))]
+            let ffmpeg_cmd= ffmpeg_base_cmd
                     .stdin(Stdio::piped()) // Open stdin for sending commands
                     .stdout(Stdio::piped()) // Pipe stdout to capture logs
                     .spawn()
@@ -100,25 +78,31 @@ impl RecordingApp {
                     .stdin(Stdio::piped()) // Open stdin for sending commands
                     .spawn()
                     .expect("Failed to start ffmpeg");
-            // Lock the process and store it
 
+            append_to_home_log(format!("PID: {}", ffmpeg_cmd.id()).as_str());
+            // Lock the process and store it
             *process_lock.lock().unwrap() = Some(ffmpeg_cmd);
         });
     }
 
     pub fn stop_recording(&self) {
+        append_to_home_log("1");
         let mut process_lock = self.recording_process.lock().unwrap();
+        append_to_home_log("2");
         if let Some(mut ffmpeg_process) = process_lock.take() {
+            append_to_home_log("3");
             if let Some(stdin) = ffmpeg_process.stdin.as_mut() {
+                append_to_home_log("4");
                 // Send the 'q' command to quit ffmpeg gracefully
-                stdin.write_all(b"q\n").expect("Failed to send 'q' to ffmpeg");
+                stdin.write_all(b"q\n"); //.expect("Failed to send 'q' to ffmpeg");
                 println!("Sent 'q' to ffmpeg to stop recording");
             }
-
+            append_to_home_log("5");
             // Optionally wait for the process to finish
             let _ = ffmpeg_process.wait().expect("Failed to wait on ffmpeg");
             println!("FFmpeg process has stopped");
         }
+        append_to_home_log("6");
 
         // Clear the start time
         *self.start_time.lock().unwrap() = None;

@@ -1,0 +1,9 @@
+[package]
+name = "app-chess"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.25"
+pleco = "0.4"
+rand = "0.9.0-beta.1"
