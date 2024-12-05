@@ -26,7 +26,7 @@ fn ffmpeg_binary() -> String {
 }
 #[cfg(not(target_os = "macos"))]
 fn ffmpeg_binary() -> String {
-    "ffmpeg"
+    "ffmpeg".to_string()
 }
 
 #[derive(Serialize, Deserialize)]
