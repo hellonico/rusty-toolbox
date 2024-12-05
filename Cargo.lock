@@ -416,6 +416,7 @@ dependencies = [
  "eframe 0.29.1",
  "pleco",
  "rand 0.9.0-beta.1",
+ "rfd",
 ]
 
 [[package]]

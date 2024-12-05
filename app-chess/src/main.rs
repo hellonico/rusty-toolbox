@@ -1,11 +1,11 @@
 use eframe::egui;
-use eframe::egui::RichText;
+use eframe::egui::{Button, RichText};
 use egui::Color32;
 // use eframe::egui::WidgetText::RichText;
 use pleco::board::Board;
 use pleco::tools::eval::Eval;
 // use pleco::core::movenum::MoveList;
-use pleco::{Player, SQ};
+use pleco::{BitMove, Player, SQ};
 use rand::rng;
 use rand::seq::SliceRandom;
 
@@ -23,6 +23,7 @@ fn main() -> Result<(), eframe::Error> {
             player_vs_ai: true,
             ai_personality: "Balanced".to_string(),
             ai_elo: 1200,
+            status_message: Some("".to_string()),
         }))),
     )
 }
@@ -36,18 +37,21 @@ struct ChessApp {
     player_vs_ai: bool,
     ai_personality: String,
     ai_elo: usize,
+    status_message: Option<String>,
 }
 
 impl eframe::App for ChessApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
+            self.render_menu(ui);
             ui.horizontal(|ui| {
-                // ui.heading("Chess AI - Personalities");
 
-                if ui.button("Undo Move").clicked() {
+                let can_undo = self.move_history.len() > 0;
+                if ui.add_enabled(can_undo, Button::new("Undo Move")).clicked() {
                     self.undo_last_move();
-                }
-                if ui.button("New Game").clicked() {
+                };
+
+                if ui.add_enabled(can_undo, Button::new("New Game")).clicked() {
                     self.reset_game(); // Call the reset method
                 }
                 ui.checkbox(&mut self.player_vs_ai, "Player vs AI");
@@ -79,16 +83,8 @@ impl eframe::App for ChessApp {
             self.check_game_over(ui);
             ui.separator();
             ui.heading("Move History");
-            // for (i, mv) in self.move_history.iter().enumerate() {
-            //     ui.label(format!("{}. {}", i + 1, mv));
-            // }
-            for (i, chunk) in self.move_history.chunks(2).enumerate() {
-                let turn = format!(
-                    "{}. {}{}",
-                    i + 1,
-                    chunk.get(0).unwrap_or(&String::new()), // White's move
-                    if let Some(black_move) = chunk.get(1) { format!(", {}", black_move) } else { "".to_string() } // Black's move
-                );
+            let moves = self.moves_to_notation();
+            for turn in moves {
                 ui.label(turn);
             }
         });
@@ -96,6 +92,117 @@ impl eframe::App for ChessApp {
 }
 
 impl ChessApp {
+    fn render_menu(&mut self, ui: &mut egui::Ui) {
+        ui.menu_button("File", |ui| {
+            if ui.button("Import PGN").clicked() {
+                self.import_pgn();
+                ui.close_menu();
+            }
+            if ui.button("Export PGN").clicked() {
+                self.export_pgn();
+                ui.close_menu();
+            }
+        });
+    }
+
+    fn generate_pgn(&self) -> String {
+        let mut pgn = String::new();
+
+        // Add PGN headers
+        pgn.push_str("[Event \"Casual Game\"]\n");
+        pgn.push_str("[Site \"Unknown\"]\n");
+        pgn.push_str("[Date \"2024.12.05\"]\n");
+        pgn.push_str("[Round \"1\"]\n");
+        pgn.push_str("[White \"Player1\"]\n");
+        pgn.push_str("[Black \"Player2\"]\n");
+        pgn.push_str("[Result \"*\"]\n\n");
+
+        // Add moves
+        let mut move_counter = 1;
+        for (i, mv) in self.move_history.iter().enumerate() {
+            if i % 2 == 0 {
+                pgn.push_str(&format!("{}. ", move_counter));
+                move_counter += 1;
+            }
+            pgn.push_str(mv);
+            pgn.push(' ');
+        }
+
+        pgn.push('\n');
+        pgn
+    }
+
+
+    // fn pgn_to_bitmove(&self, pgn: &str) -> Result<BitMove, String> {
+    //     // Implement conversion from PGN notation to BitMove
+    //     // This depends on your chess engine, but here's a generic example:
+    //
+    //     // self.board.parse_pgn_move(pgn).map_err(|e| format!("Invalid move: {}", e))
+    //     // Bit
+    // }
+
+    fn parse_pgn(&mut self, pgn: &str) -> Result<(), String> {
+        let lines: Vec<&str> = pgn.lines().collect();
+        let mut headers = true;
+        self.move_history.clear();
+
+        for line in lines {
+            if headers && line.starts_with('[') {
+                // Ignore metadata headers (e.g., [Event "Game"])
+                continue;
+            }
+
+            headers = false;
+
+            let moves: Vec<&str> = line.split_whitespace().collect();
+            for mv in moves {
+                if mv.ends_with('.') {
+                    // Skip move numbers like "1.", "2.", etc.
+                    continue;
+                }
+
+                println!("Replay:{mv}");
+                // Apply the move to the board
+                self.board.apply_uci_move(mv);
+
+                // Store the move in PGN format for later generation
+                self.move_history.push(mv.to_string());
+            }
+        }
+
+        Ok(())
+    }
+
+
+    fn import_pgn(&mut self) {
+        // Open file dialog to select a PGN file
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("PGN files", &["pgn"])
+            .pick_file()
+        {
+            match std::fs::read_to_string(path) {
+                Ok(contents) => match self.parse_pgn(&contents) {
+                    Ok(_) => self.status_message = Some("PGN imported successfully!".to_string()),
+                    Err(err) => self.status_message = Some(format!("Error importing PGN: {err}")),
+                },
+                Err(err) => self.status_message = Some(format!("Error reading file: {err}")),
+            }
+        }
+    }
+
+    fn export_pgn(&mut self) {
+        // Open file dialog to save a PGN file
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("PGN files", &["pgn"])
+            .save_file()
+        {
+            let pgn = self.generate_pgn();
+            match std::fs::write(path, pgn) {
+                Ok(_) => self.status_message = Some("PGN exported successfully!".to_string()),
+                Err(err) => self.status_message = Some(format!("Error writing file: {err}")),
+            }
+        }
+    }
     fn reset_game(&mut self) {
         self.board = Board::default(); // Reset the board to the default starting position
         self.selected_square = None;  // Clear any selected squares
@@ -107,20 +214,19 @@ impl ChessApp {
         self.ai_elo = 1200;            // Reset AI ELO (optional)
     }
     fn check_game_over(&self, ui: &mut egui::Ui) {
-
-    if self.board.checkmate() {
-                let winner = if self.board.turn() == Player::White {
-                    "Black"
-                } else {
-                    "White"
-                };
-                ui.label(format!("Game Over: {} wins by checkmate!", winner));
-    }
+        if self.board.checkmate() {
+            let winner = if self.board.turn() == Player::White {
+                "Black"
+            } else {
+                "White"
+            };
+            ui.label(format!("Game Over: {} wins by checkmate!", winner));
+        }
         if self.board.stalemate() {
-                ui.label("Game Over: Stalemate!");
+            ui.label("Game Over: Stalemate!");
         }
         if self.board.in_check() {
-                ui.label("Check!");
+            ui.label("Check!");
         }
     }
     fn update_best_moves(&mut self) {
@@ -230,6 +336,7 @@ impl ChessApp {
     }
 
     fn undo_last_move(&mut self) {
+        // self.board.can_
         if let _ = self.board.undo_move() {
             self.move_history.pop();
         }
@@ -300,6 +407,20 @@ impl ChessApp {
         let mut board_clone = self.board.clone();
         board_clone.apply_move(*mv);
         Eval::eval_low(&board_clone)
+    }
+
+    fn moves_to_notation(&mut self) -> Vec<String> {
+        let mut moves = Vec::new();
+        for (i, chunk) in self.move_history.chunks(2).enumerate() {
+            let turn = format!(
+                "{}. {}{}",
+                i + 1,
+                chunk.get(0).unwrap_or(&String::new()), // White's move
+                if let Some(black_move) = chunk.get(1) { format!(", {}", black_move) } else { "".to_string() } // Black's move
+            );
+            moves.push(turn);
+        }
+        moves
     }
 }
 
