@@ -1,11 +1,9 @@
 use eframe::egui;
 use eframe::egui::{Button, RichText};
 use egui::Color32;
-// use eframe::egui::WidgetText::RichText;
 use pleco::board::Board;
 use pleco::tools::eval::Eval;
-// use pleco::core::movenum::MoveList;
-use pleco::{BitMove, Player, SQ};
+use pleco::{Player, SQ};
 use rand::rng;
 use rand::seq::SliceRandom;
 
