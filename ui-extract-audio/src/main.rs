@@ -1,13 +1,12 @@
-use eframe::{egui, NativeOptions};
-use std::process::{exit, Command, Output};
-use std::path::PathBuf;
+use eframe::egui;
+use lib_egui_utils::my_default_options;
+use lib_ffmpeg_utils::utils::{check_ffmpeg, path_for};
 use native_dialog::FileDialog;
+use std::path::PathBuf;
+use std::process::{exit, Command};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
-use eframe::egui::ViewportBuilder;
-use lib_egui_utils::{icon, my_default_options};
-use lib_ffmpeg_utils::utils::{check_ffmpeg, path_for};
 
 #[derive(Default)]
 struct MyApp {
@@ -77,7 +76,7 @@ impl eframe::App for MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // Display FFmpeg version
             if let Some(version) = &self.ffmpeg_version {
-                ui.label(format!("FFmpeg version: {}", version));
+                ui.label(format!("{}", version));
             }
 
             // Display tabs
