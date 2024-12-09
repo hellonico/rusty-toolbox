@@ -21,6 +21,7 @@ name = "GoodNight"
 identifier = "info.hellonico.goodnight"
 icon = ["icon.icns"] # Path to your app's icon (optional)
 version = "1.0.0"
+#[cfg(target_os = "macos")]
 resources = ["resources"]
 
 [[bin]]

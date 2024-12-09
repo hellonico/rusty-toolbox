@@ -100,19 +100,19 @@ impl MyApp {
     }
 
 }
-
-fn format_duration(duration: Duration) -> String {
-    // Get total seconds from the Duration
-    let total_seconds = duration.as_secs();
-
-    // Calculate hours, minutes, and seconds
-    let hours = total_seconds / 3600;
-    let minutes = (total_seconds % 3600) / 60;
-    let seconds = total_seconds % 60;
-
-    // Return the formatted string
-    format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
-}
+//
+// fn format_duration(duration: Duration) -> String {
+//     // Get total seconds from the Duration
+//     let total_seconds = duration.as_secs();
+//
+//     // Calculate hours, minutes, and seconds
+//     let hours = total_seconds / 3600;
+//     let minutes = (total_seconds % 3600) / 60;
+//     let seconds = total_seconds % 60;
+//
+//     // Return the formatted string
+//     format!("{:02}:{:02}:{:02}", hours, minutes, seconds)
+// }
 
 impl Default for MyApp {
     fn default() -> Self {
@@ -400,9 +400,10 @@ impl eframe::App for MyApp {
             } else {
 
             }
-            ctx.request_repaint_after(Duration::from_secs(1));
+            // ctx.request_repaint_after(Duration::from_secs(1));
         });
 
+        ctx.request_repaint();
     }
 }
 use std::error::Error;
@@ -419,7 +420,7 @@ use lib_egui_utils::my_default_options;
 use regex::Regex;
 use lib_ffmpeg_utils::devices::DeviceLister;
 use lib_ffmpeg_utils::log::append_to_home_log;
-use lib_ffmpeg_utils::utils::{clean_up_parameters, ffmpeg_binary};
+use lib_ffmpeg_utils::utils::{clean_up_parameters, ffmpeg_binary, format_duration};
 
 fn compute_wait_duration(start_time_str: &str) -> Result<Duration, Box<dyn Error>> {
     // Parse the start time entered by the user

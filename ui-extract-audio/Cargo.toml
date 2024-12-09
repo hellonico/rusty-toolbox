@@ -1,5 +1,5 @@
 [package]
-name = "extract_audio"
+name = "ui-extract-audio"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,3 +7,14 @@ edition = "2021"
 eframe = "0.29.1"
 native-dialog = "0.7.0"
 lib_egui_utils = { path = "../lib-egui-utils" }
+lib-ffmpeg-utils = { path = "../lib-ffmpeg-utils" }
+
+[package.metadata.bundle.bin.ui-extract-audio]
+name = "Electrophant"
+identifier = "info.hellonico.electrophant"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+
+[[bin]]
+name = "ui-extract-audio"
+path = "src/main.rs"

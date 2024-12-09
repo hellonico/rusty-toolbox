@@ -2,17 +2,21 @@
 use eframe::{egui, App};
 use egui_extras::install_image_loaders;
 use lib_egui_utils::{my_default_options, open_containing_folder};
-use video_recorder_for_mum::RecordingApp;
+use lib_ffmpeg_utils::recorder::RecordingApp;
+use lib_ffmpeg_utils::utils::check_ffmpeg;
+// use video_recorder_for_mum::RecordingApp;
 
 
 pub struct RecordingAppUI {
-    recording_app : RecordingApp
+    recording_app : RecordingApp,
+    ffmpeg_version: String,
 }
 
 impl Default for RecordingAppUI {
     fn default() -> Self {
         Self {
-            recording_app : RecordingApp::default()
+            recording_app : RecordingApp::default(),
+            ffmpeg_version: check_ffmpeg().unwrap(),
         }
     }
 }
@@ -39,9 +43,12 @@ impl App for RecordingAppUI {
                                 .rounding(10.0)
                         );
 
+
                         // Rest of the UI on the right side
                         ui.vertical(|ui| {
-                            // Start/Stop recording button
+
+                            ui.label(&self.ffmpeg_version);
+
                             let process_lock = self.recording_app.recording_process.clone();
                             if process_lock.lock().unwrap().is_some() {
                                 if ui.button("Stop Recording").clicked() {

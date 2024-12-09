@@ -4,6 +4,7 @@ use chrono::{Local, NaiveTime};
 use egui::debug_text::print;
 use video_recorder_for_mum::RecordingApp;
 use notify_rust::Notification;
+use lib_ffmpeg_utils::recorder::RecordingApp;
 
 fn main() {
     let matches = Command::new("Video Recorder")

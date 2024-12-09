@@ -2,7 +2,6 @@ use app_ui_system_stats::SysStats;
 use egui::{menu, Color32, FontId, ProgressBar, TextStyle};
 use egui_extras::{Column, TableBuilder};
 use lib_egui_utils::my_default_options;
-use lib_os_utils::VpnStatus;
 
 fn main() {
     let mut sys = SysStats::new();

@@ -6,6 +6,7 @@ pub struct DeviceLister {
     video_devices: Vec<String>,
 }
 
+#[cfg(target_os = "macos")]
 impl DeviceLister {
     /// Creates a new `DeviceLister` by running the ffmpeg command and parsing the output
     pub fn new() -> Self {
@@ -79,3 +80,30 @@ impl DeviceLister {
         None
     }
 }
+
+// TODO: impl for windows and linux
+// Retrieves the list of available audio inputs via FFmpeg.
+// pub fn get_audio_inputs(&self) -> io::Result<Vec<String>> {
+//     // Execute FFmpeg to list devices
+//     let ffmpeg_output = Command::new("ffmpeg")
+//         .args(&["-f", "dshow", "-list_devices", "true", "-i", "dummy"])
+//         .stderr(Stdio::piped()) // FFmpeg writes device info to stderr
+//         .output()?;
+//
+//     let output = String::from_utf8_lossy(&ffmpeg_output.stderr);
+//     let mut audio_inputs = Vec::new();
+//
+//     // Parse FFmpeg's output for audio devices
+//     for line in output.lines() {
+//         if line.contains("[dshow") && line.contains("(audio)") {
+//             if let Some(start) = line.find('"') {
+//                 if let Some(end) = line[start + 1..].find('"') {
+//                     let device_name = line[start + 1..start + 1 + end].to_string();
+//                     audio_inputs.push(device_name);
+//                 }
+//             }
+//         }
+//     }
+//
+//     Ok(audio_inputs)
+// }

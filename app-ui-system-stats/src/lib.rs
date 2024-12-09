@@ -2,7 +2,7 @@
 use get_if_addrs::get_if_addrs;
 use serde::Serialize;
 use sysinfo::{CpuExt, DiskExt, System, SystemExt};
-use lib_os_utils::{get_vpn_status, VpnStatus};
+use lib_os_utils::{get_vpn_status, git_version, VpnStatus};
 use lib_os_utils::location::{get_location, Location};
 use lib_os_utils::serial::get_serial_number;
 use lib_os_utils::wifi::get_wifi_ssid;
@@ -56,6 +56,7 @@ pub struct SysStats {
     pub serial_number: String,
     pub vpn: Option<VpnStatus>,
     pub batteries: Vec<Battery>,
+    pub git_version: String,
 }
 impl SysStats {
     pub fn new() -> Self {
@@ -81,6 +82,7 @@ impl SysStats {
             serial_number: "".to_string(),
             vpn: None,
             batteries: Vec::new(),
+            git_version: "".to_string(),
         }
     }
 
@@ -130,6 +132,7 @@ impl SysStats {
                 // energy_value: bb.energy().value,
             }
         }).collect();
+        self.git_version = git_version().unwrap();
     }
 
     pub fn total_cpu_usage(&self) -> f32 {

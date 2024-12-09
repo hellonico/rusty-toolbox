@@ -1,5 +1,6 @@
 use std::process::{Command, Stdio};
 use std::io;
+use lib_ffmpeg_utils::recorder::RecordingApp;
 use video_recorder_for_mum::RecordingApp;
 
 fn main() -> io::Result<()> {

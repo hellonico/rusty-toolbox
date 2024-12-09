@@ -6,7 +6,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 use eframe::egui::ViewportBuilder;
-use lib_egui_utils::icon;
+use lib_egui_utils::{icon, my_default_options};
+use lib_ffmpeg_utils::utils::{check_ffmpeg, path_for};
 
 #[derive(Default)]
 struct MyApp {
@@ -21,14 +22,15 @@ struct MyApp {
 }
 
 fn main() -> Result<(), eframe::Error> {
-    let app_icon = icon(include_bytes!("../icon.png"));
-    let native_options = NativeOptions {
-        viewport: ViewportBuilder::default()
-            .with_close_button(true)
-            .with_inner_size(egui::Vec2::new(400.0, 300.0))
-            .with_icon(app_icon),
-        ..Default::default()
-    };
+    // let app_icon = icon(include_bytes!("../icon.png"));
+    // let native_options = NativeOptions {
+    //     viewport: ViewportBuilder::default()
+    //         .with_close_button(true)
+    //         .with_inner_size(egui::Vec2::new(400.0, 300.0))
+    //         .with_icon(app_icon),
+    //     ..Default::default()
+    // };
+    let native_options = my_default_options(400.0, 300.0, include_bytes!("../icon.png"));
 
     let mut app = MyApp {
         current_tab: "Extract Audio".to_string(),
@@ -71,6 +73,7 @@ impl eframe::App for MyApp {
         }
 
         let processing = self.processing.clone();
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // Display FFmpeg version
             if let Some(version) = &self.ffmpeg_version {
@@ -153,21 +156,6 @@ impl eframe::App for MyApp {
     }
 }
 
-fn check_ffmpeg() -> Result<String, ()> {
-    // Try to execute `ffmpeg -version` to check if ffmpeg is installed
-    let output = Command::new("ffmpeg")
-        .arg("-version")
-        .output();
-
-    match output {
-        Ok(Output { stdout, .. }) => {
-            let version = String::from_utf8_lossy(&stdout);
-            let version_line = version.lines().next().unwrap_or("").to_string();
-            Ok(version_line)
-        }
-        Err(_) => Err(()),
-    }
-}
 
 fn run_ffmpeg(input_file: &PathBuf, output_file: &str, format: &str) -> String {
     let input = input_file.to_str().unwrap();
@@ -180,7 +168,7 @@ fn run_ffmpeg(input_file: &PathBuf, output_file: &str, format: &str) -> String {
         _ => vec![], // Default empty args for unsupported formats
     };
 
-    let ffmpeg_command = Command::new("ffmpeg")
+    let ffmpeg_command = Command::new(path_for("ffmpeg"))
         .args(args)
         .output()
         .expect("Failed to execute ffmpeg command");

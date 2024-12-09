@@ -12,10 +12,10 @@ declare -a folders=(
 #"app-ui-system-stats"
 #"app-ui-probe-videos"
 #"app-cli-convert-videos"
-#"video-recorder-for-mum"
-"app-ui-open-link-in-1-hour"
+"video-recorder-for-mum"
+#"app-ui-open-link-in-1-hour"
+#"ui-extract-audio"
 )
-
 
 for  folder  in  "${folders[@]}"
 do

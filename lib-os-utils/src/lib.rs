@@ -13,7 +13,7 @@ pub fn git_version() -> Result<String, Box<dyn std::error::Error>> {
     if !output.status.success() {
         return Err(format!("Command failed with status: {}", output.status).into());
     } else {
-        Ok(String::from_utf8(output.stdout).unwrap())
+        Ok(String::from_utf8(output.stdout.trim_ascii().into()).unwrap())
     }
 }
 

@@ -28,6 +28,8 @@ name = "Mommy"
 identifier = "info.hellonico.mommy"
 icon = ["icon.icns"] # Path to your app's icon (optional)
 version = "1.0.0"
+#[cfg(target_os = "macos")]
+resources = ["resources"]
 
 [[bin]]
 name = "video-recorder-for-mum"
