@@ -484,6 +484,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "eframe 0.29.1",
+ "egui_extras",
  "lib-ffmpeg-utils",
  "lib_egui_utils",
  "open",

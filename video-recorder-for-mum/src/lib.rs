@@ -6,10 +6,10 @@ use std::process::{Child, Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use std::{env, io, thread};
-use std::fs::File;
 #[cfg(target_os = "windows")]
 use winapi::um::winbase::DETACHED_PROCESS;
-use lib_ffmpeg_utils::{append_to_home_log, get_base_ffmpeg_command};
+use lib_ffmpeg_utils::log::append_to_home_log;
+use lib_ffmpeg_utils::utils::get_base_ffmpeg_command;
 
 pub struct RecordingApp {
     pub recording_process: Arc<Mutex<Option<Child>>>,
@@ -79,30 +79,30 @@ impl RecordingApp {
                     .spawn()
                     .expect("Failed to start ffmpeg");
 
-            append_to_home_log(format!("PID: {}", ffmpeg_cmd.id()).as_str());
+            append_to_home_log(format!("PID: {}", ffmpeg_cmd.id()));
             // Lock the process and store it
             *process_lock.lock().unwrap() = Some(ffmpeg_cmd);
         });
     }
 
     pub fn stop_recording(&self) {
-        append_to_home_log("1");
+        append_to_home_log("1".into());
         let mut process_lock = self.recording_process.lock().unwrap();
-        append_to_home_log("2");
+        append_to_home_log("2".into());
         if let Some(mut ffmpeg_process) = process_lock.take() {
-            append_to_home_log("3");
+            append_to_home_log("3".into());
             if let Some(stdin) = ffmpeg_process.stdin.as_mut() {
-                append_to_home_log("4");
+                append_to_home_log("4".into());
                 // Send the 'q' command to quit ffmpeg gracefully
                 stdin.write_all(b"q\n"); //.expect("Failed to send 'q' to ffmpeg");
                 println!("Sent 'q' to ffmpeg to stop recording");
             }
-            append_to_home_log("5");
+            append_to_home_log("5".into());
             // Optionally wait for the process to finish
             let _ = ffmpeg_process.wait().expect("Failed to wait on ffmpeg");
             println!("FFmpeg process has stopped");
         }
-        append_to_home_log("6");
+        append_to_home_log("6".into());
 
         // Clear the start time
         *self.start_time.lock().unwrap() = None;

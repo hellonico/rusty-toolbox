@@ -1,3 +1,4 @@
+use std::process::exit;
 use eframe::egui::{self, menu, Align, Color32, ComboBox, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
 use lib_egui_utils::my_default_options;
 use lib_ollama_utils::{fetch_models, ollama, ollama_with_messages};
@@ -348,6 +349,9 @@ impl eframe::App for CuteChatApp {
                     }
                     if ui.button("Clear History").clicked() {
                         self.messages.lock().unwrap().clear();
+                    }
+                    if ui.button("Quit").clicked() {
+                        exit(0);
                     }
                 });
             });

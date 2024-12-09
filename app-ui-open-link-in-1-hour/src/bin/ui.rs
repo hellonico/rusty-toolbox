@@ -1,6 +1,5 @@
 use std::sync::{Arc, Mutex};
 use std::{env, thread};
-use std::ascii::AsciiExt;
 use std::thread::sleep;
 use eframe::{egui};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -8,26 +7,18 @@ use chrono::{Local, NaiveTime};
 use eframe::egui::ViewportCommand;
 
 fn main() -> Result<(), eframe::Error> {
-    append_to_home_log(env::current_exe().unwrap().to_string_lossy().to_string());
+
+    //append_to_home_log(env::current_exe().unwrap().to_string_lossy().to_string());
     append_to_home_log(ffmpeg_binary());
+
+    let app = MyApp::default();
+    append_to_home_log("App loaded".to_string());
     let options =
         my_default_options(800.0, 500.0, include_bytes!("../../icon.png"));
-    eframe::run_native("Open URL Scheduler", options, Box::new(|_cc| Ok(Box::new(MyApp::default()))))
+    eframe::run_native("Open URL Scheduler", options, Box::new(|_cc| Ok(Box::new(app))))
+
 }
 
-#[cfg(target_os = "macos")]
-fn ffmpeg_binary() -> String {
-    let bin = format!("{:}/Resources/resources/ffmpeg", env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_string_lossy());
-    if PathBuf::from(bin.clone()).exists() {
-        bin
-    } else {
-        "/opt/homebrew/bin/ffmpeg".to_string()
-    }
-}
-#[cfg(not(target_os = "macos"))]
-fn ffmpeg_binary() -> String {
-    "ffmpeg".to_string()
-}
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -35,19 +26,25 @@ struct Config {
     url: String,
     command: String,
     show_parameter: bool,
+    selected_video: i32,
+    selected_audio: i32,
+    hide_on_record: bool,
 }
 
 
 struct MyApp {
-    url: String,
-    start_time: String,
+
     waiting: Arc<Mutex<bool>>,
     wait_duration: Option<Duration>,
-    // remaining_time: Option<std::time::Duration>,
     remaining_time: Arc<Mutex<Option<Duration>>>, // Shared state for remaining time
-    // extra_command: String,
     command: String,
+    url: String,
+    start_time: String,
     show_parameter: bool,
+    hide_on_record: bool,
+    device_lister: DeviceLister,
+    selected_audio: i32,
+    selected_video: i32,
 }
 
 impl MyApp {
@@ -60,7 +57,7 @@ impl MyApp {
     }
 
     fn set_codec(& mut self, preset: String) {
-        self.replace_or_insert(r"-vcodec \w+", r"(-i \S+)", format!("-vcodec {} ", preset));
+        self.replace_or_insert(r"-vcodec \w+", r"(-i \S+)", format!("-vcodec {}", preset));
     }
 
     fn set_preset(& mut self, preset: String) {
@@ -86,7 +83,6 @@ impl MyApp {
 
         self.replace_or_insert(reg1, reg2, new1);
     }
-
 
     fn replace_or_insert(&mut self, reg1: &str, reg2: &str, new1: String) {
         // Regular expressions
@@ -129,20 +125,28 @@ impl Default for MyApp {
             start_time: formatted_time,
             waiting: Arc::new(Mutex::new(false)),
             wait_duration: None,
+            hide_on_record: true,
             remaining_time: Arc::new(Mutex::new(None)),
             //extra_command: "/Users/niko/Downloads/ffmpeg -y -f avfoundation -i 1:0 -vsync vfr -b:a 196k -t 00:00:10 output.mp4".to_string(),
             command: "-y -f avfoundation -i 1:0 -vcodec libx264 -preset veryfast -b:a 196k -s 960x540 -t 00:00:10 /Users/niko/Desktop/output.mkv".to_string(), // Initialize with an empty command
             show_parameter: false,
+            device_lister: DeviceLister::new(),
+            selected_audio: 0,
+            selected_video: 0,
         }
     }
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        install_image_loaders(ctx);
         egui::CentralPanel::default().show(ctx, |ui| {
 
             ui.menu_button("Night Menu", |ui| {
                 if ui.checkbox(&mut self.show_parameter, "Show Recording Parameters ").clicked() {
+                    // self.show_parameter();
+                };
+                if ui.checkbox(&mut self.hide_on_record, "Hide Window on Recording ").clicked() {
                     // self.show_parameter();
                 };
                 ui.menu_button("Set Time", |ui| {
@@ -161,6 +165,24 @@ impl eframe::App for MyApp {
                 });
 
                 ui.menu_button("Record Settings", |ui| {
+                    ui.menu_button("Devices", |ui| {
+                        ui.menu_button("Video", |ui| {
+                            for (index, preset) in self.device_lister.get_video_devices().iter().enumerate() {
+                                // Use selectable_value to indicate if the item is selected
+                                if ui.selectable_value(&mut self.selected_video, index as i32, preset.clone()).clicked() {
+                                    self.replace_or_insert(r"(-i \S+)", "", format!("-i {}:{}", self.selected_video, self.selected_audio));
+                                }
+                            }
+                        });
+                        ui.menu_button("Audio", |ui| {
+                            for (index, preset) in self.device_lister.get_audio_devices().iter().enumerate() {
+                                // Use selectable_value to indicate if the item is selected
+                                if ui.selectable_value(&mut self.selected_audio, index as i32, preset.clone()).clicked() {
+                                    self.replace_or_insert(r"(-i \S+)", "", format!("-i {}:{}", self.selected_video, self.selected_audio));
+                                }
+                            }
+                        });
+                    });
                     ui.menu_button("Duration", |ui| {
                         if ui.button("2 hours").clicked() {
                             self.set_record_time(Duration::from_secs(3600*2));
@@ -232,6 +254,9 @@ impl eframe::App for MyApp {
                                 self.url = config.url;
                                 self.command = config.command;
                                 self.show_parameter = config.show_parameter;
+                                self.selected_video = config.selected_video;
+                                self.selected_audio = config.selected_audio;
+                                self.hide_on_record = config.hide_on_record;
                             }
                         }
                     }
@@ -244,6 +269,9 @@ impl eframe::App for MyApp {
                                 url: self.url.clone(),
                                 command: self.command.clone(),
                                 show_parameter : self.show_parameter.clone(),
+                                selected_video : self.selected_video.clone(),
+                                selected_audio : self.selected_audio.clone(),
+                                hide_on_record : self.hide_on_record.clone(),
                             };
                             if let Err(e) = save_config(path.to_str().unwrap(), &config) {
                                 eprintln!("Error saving file: {}", e);
@@ -255,6 +283,106 @@ impl eframe::App for MyApp {
                 if ui.button("Quit").clicked() {
                     exit(0);
                 }
+            });
+
+
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.add_sized(
+                        [300.0, 300.0],
+                        egui::Image::new(egui::include_image!("../../src/mafalda.png"))
+                            // .max_width(500.0) // Set the max width for the image
+                            // .size(vec2[200.0, 300.0])
+                            // .tint(egui::Color32::LIGHT_BLUE)
+                            .rounding(10.0)
+                    );
+                });
+
+                ui.vertical(|ui| {
+
+                    ui.label("Enter the URL to open:");
+                    ui.text_edit_singleline(&mut self.url);
+
+                    ui.label("Enter the start time (HH:MM:ss, 24-hour format):");
+                    ui.text_edit_singleline(&mut self.start_time);
+
+                    ui.separator();
+
+                    if self.show_parameter {
+                        ui.label("Enter recording parameters:");
+                        ui.text_edit_multiline(&mut self.command);
+
+                        ui.separator();
+                    }
+                //
+                // });
+                //
+                //
+                // ui.vertical(|ui| {
+                    if ui.button("Plan Recording").clicked() {
+                        if let Ok(duration) = compute_wait_duration(&self.start_time) {
+                            let mut waiting_lock = self.waiting.lock().unwrap();
+                            *waiting_lock = true;
+                            // drop(waiting_lock);  // Explicitly drop the lock to release it
+
+                            self.wait_duration = Some(duration);
+
+                            // Spawn async tasks
+                            let remaining_time_clone = Arc::clone(&self.remaining_time);
+                            let url_clone = self.url.clone();
+
+
+                            thread::spawn(move || {
+                                update_remaining_time(duration, remaining_time_clone)
+                            });
+                            let mut waiting_lock = self.waiting.clone();
+                            let command = self.command.clone();
+                            let cctx = ctx.clone();
+                            let hide = self.hide_on_record;
+                            thread::spawn(move || {
+
+                                open_url_after_delay(duration, url_clone);
+
+                                // Minimize the window
+                                if(hide) {
+                                    cctx.send_viewport_cmd(ViewportCommand::Minimized(true));
+                                }
+
+                                // Set waiting to false after URL is opened
+                                let mut waiting_lock = waiting_lock.lock().unwrap();
+                                *waiting_lock = false;
+
+                                thread::spawn(move || {
+                                    // let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
+                                    // self.replace_or_insert(r"-timestamp ",r"-y", );
+                                    // let updated = command.replace("-y",format!("-timestamp {}", timestamp).as_str() );;
+                                    //
+                                    let date = Local::now().format("%d_%m_%Y_%H_%M");
+                                    let updated = command.replace("output.mkv", format!("screen_{:}.mkv", date).as_str());
+                                    println!("Updated : {}", updated);
+                                    append_to_home_log(format!("{} {}", ffmpeg_binary(), updated));
+                                    // TODO: extract binary
+                                    // Replace if ffmpeg
+
+                                    let output = Command::new(ffmpeg_binary())
+                                        .args(clean_up_parameters(updated))
+                                        .output()
+                                        .expect("Failed to execute command");
+
+                                    if !output.stdout.is_empty() {
+                                        append_to_home_log(format!("Command output: {}", String::from_utf8_lossy(&output.stdout)));
+                                    }
+                                    if !output.stderr.is_empty() {
+                                        append_to_home_log(format!("Command error: {}", String::from_utf8_lossy(&output.stderr)));
+                                    }
+                                })
+                            });
+                        } else {
+                            ui.label("Invalid start time format.");
+                        }
+                    }
+                });
+
             });
 
             if self.waiting.lock().unwrap().clone() {
@@ -270,87 +398,9 @@ impl eframe::App for MyApp {
                     ui.label("Waiting to open the URL...");
                 }
             } else {
-                ui.label("Enter the URL to open:");
-                ui.text_edit_singleline(&mut self.url);
 
-                ui.label("Enter the start time (HH:MM:ss, 24-hour format):");
-                ui.text_edit_singleline(&mut self.start_time);
-
-                ui.separator();
-
-                if self.show_parameter {
-                    ui.label("Enter recording parameters:");
-                    ui.text_edit_multiline(&mut self.command);
-
-                    ui.separator();
-                }
-
-                if ui.button("Plan Recording").clicked() {
-                    if let Ok(duration) = compute_wait_duration(&self.start_time) {
-                        let mut waiting_lock = self.waiting.lock().unwrap();
-                        *waiting_lock = true;
-                        // drop(waiting_lock);  // Explicitly drop the lock to release it
-
-                        self.wait_duration = Some(duration);
-
-                        // Spawn async tasks
-                        let remaining_time_clone = Arc::clone(&self.remaining_time);
-                        let url_clone = self.url.clone();
-
-
-                        thread::spawn(move || {
-                            update_remaining_time(duration, remaining_time_clone)
-                        });
-                        let mut waiting_lock = self.waiting.clone();
-                        let command = self.command.clone();
-                        let cctx = ctx.clone();
-                        thread::spawn(move || {
-
-                            open_url_after_delay(duration, url_clone);
-
-                            // Minimize the window
-                            cctx.send_viewport_cmd(ViewportCommand::Minimized(true));
-
-
-                            // Set waiting to false after URL is opened
-                            let mut waiting_lock = waiting_lock.lock().unwrap();
-                            *waiting_lock = false;
-
-                            thread::spawn(move || {
-                                // let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
-                                // self.replace_or_insert(r"-timestamp ",r"-y", );
-                                // let updated = command.replace("-y",format!("-timestamp {}", timestamp).as_str() );;
-                                //
-                                let date = Local::now().format("%d_%m_%Y_%H_%M");
-                                let updated = command.replace("output.mkv", format!("screen_{:}.mkv", date).as_str());
-                                println!("Updated : {}", updated);
-                                append_to_home_log(format!("{} {}", ffmpeg_binary(), updated));
-                                // TODO: extract binary
-                                // Replace if ffmpeg
-
-                                let output = Command::new(ffmpeg_binary())
-                                    // .arg("-c")
-                                    .args(updated.split(" ").collect::<Vec<&str>>())
-                                    .output()
-                                    .expect("Failed to execute command");
-
-                                if !output.stdout.is_empty() {
-                                    append_to_home_log(format!("Command output: {}", String::from_utf8_lossy(&output.stdout)));
-                                }
-                                if !output.stderr.is_empty() {
-                                    append_to_home_log(format!("Command error: {}", String::from_utf8_lossy(&output.stderr)));
-                                }
-                            })
-                        });
-                    } else {
-                        ui.label("Invalid start time format.");
-                    }
-                }
-
-
-                // ctx.request_repaint(); // En
-                ctx.request_repaint_after(Duration::from_secs(1));
             }
+            ctx.request_repaint_after(Duration::from_secs(1));
         });
 
     }
@@ -362,11 +412,14 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{exit, Command};
 use eframe::egui::UiKind::TopPanel;
+use egui_extras::install_image_loaders;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 use lib_egui_utils::my_default_options;
-use lib_ffmpeg_utils::append_to_home_log;
 use regex::Regex;
+use lib_ffmpeg_utils::devices::DeviceLister;
+use lib_ffmpeg_utils::log::append_to_home_log;
+use lib_ffmpeg_utils::utils::{clean_up_parameters, ffmpeg_binary};
 
 fn compute_wait_duration(start_time_str: &str) -> Result<Duration, Box<dyn Error>> {
     // Parse the start time entered by the user
@@ -418,8 +471,10 @@ fn open_url_after_delay(wait_duration: Duration, url: String) {
     if wait_duration < Duration::from_secs(3600*24*7) {
         sleep(wait_duration);
     }
-    if let Err(e) = open::that(url) {
-        eprintln!("Failed to open the URL: {}", e);
+    if !url.is_empty() {
+        if let Err(e) = open::that(url) {
+            eprintln!("Failed to open the URL: {}", e);
+        }
     }
 }
 

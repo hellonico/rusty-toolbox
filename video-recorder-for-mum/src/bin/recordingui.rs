@@ -1,7 +1,7 @@
 #![windows_subsystem = "windows"]
 use eframe::{egui, App};
 use egui_extras::install_image_loaders;
-use lib_egui_utils::my_default_options;
+use lib_egui_utils::{my_default_options, open_containing_folder};
 use video_recorder_for_mum::RecordingApp;
 
 
@@ -62,7 +62,7 @@ impl App for RecordingAppUI {
                             if let Some(output_file) = &*self.recording_app.last_output_file.lock().unwrap() {
                                 ui.label(output_file.clone());
                                 if ui.button("Open Folder").clicked() {
-                                    RecordingApp::open_containing_folder(output_file);
+                                    open_containing_folder(output_file);
                                 }
                             }
                         });
