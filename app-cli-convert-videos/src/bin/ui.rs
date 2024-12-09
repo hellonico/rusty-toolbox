@@ -63,6 +63,7 @@ impl MyApp {
             app.enqueue_jobs();
         }
 
+        // add remixicon
         let mut fonts = egui::FontDefinitions::default();
         add_to_fonts(&mut fonts);
         cc.egui_ctx.set_fonts(fonts);

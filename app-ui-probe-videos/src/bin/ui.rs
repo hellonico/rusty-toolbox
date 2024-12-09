@@ -1,9 +1,9 @@
 use app_ui_probe_videos::{extract_frame, extract_metadata, Metadata};
 use eframe::egui;
 use egui::TextStyle::Small;
-use egui::{Color32, ComboBox, Context, FontId, RichText, Rounding, ScrollArea, Ui};
+use egui::{Color32, ComboBox, Context, FontId, RichText, Rounding, ScrollArea, TextStyle, Ui};
 use egui_extras::install_image_loaders;
-use lib_egui_utils::my_default_options;
+use lib_egui_utils::{configure_text_styles, my_default_options};
 use open;
 use rfd::FileDialog;
 use std::fs;
@@ -43,21 +43,6 @@ enum SortField {
     Name,
     Date,
     FileSize,
-}
-
-fn configure_text_styles(ctx: &egui::Context) {
-    use egui::FontFamily::Proportional;
-    use egui::TextStyle::*;
-
-    let mut style = (*ctx.style()).clone();
-    style.text_styles = [
-        (Heading, FontId::new(30.0, Proportional)),
-        (Body, FontId::new(18.0, Proportional)),
-        (Monospace, FontId::new(14.0, Proportional)),
-        (Button, FontId::new(14.0, Proportional)),
-        (Small, FontId::new(10.0, Proportional)),
-    ].into();
-    ctx.set_style(style);
 }
 
 impl VideoApp {

@@ -38,7 +38,8 @@ fn convert_to_json(model: &str, messages: &Vec<(String, String)>) -> serde_json:
         .map(|(user, text)| {
             json!({
                 "role": user,
-                "content": text
+                "content": text,
+                "format" : "json",
             })
         })
         .collect();
@@ -46,7 +47,8 @@ fn convert_to_json(model: &str, messages: &Vec<(String, String)>) -> serde_json:
     // Build the JSON structure
     json!({
         "model": model,
-        "messages": formatted_messages
+        "messages": formatted_messages,
+        // "format" : "json",
     })
 }
 
@@ -62,7 +64,8 @@ where
     let url = format!("{}/api/generate", base_url);
     let json = json!({
         "model": model.to_string(),
-        "prompt": prompt
+        "prompt": prompt,
+        // "format" : "json",
     });
 
     process_stream(&url, json, on_token, |buffer| {

@@ -3,8 +3,10 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
-use eframe::egui::{IconData, ViewportBuilder};
+use eframe::egui::{FontId, IconData, ViewportBuilder};
 use eframe::{egui, NativeOptions};
+use eframe::egui::UiKind::Menu;
+use egui::FontData;
 use image::GenericImageView;
 use SortBy::Size;
 
@@ -203,4 +205,57 @@ pub fn list_files_from_dir2(
         .into_iter()
         .map(|(path, _, _)| path.to_string_lossy().to_string())
         .collect()
+}
+
+
+pub fn add_font(ctx: &egui::Context, name: &str, bytes:&[u8]) {
+    let mut fonts = egui::FontDefinitions::default();
+    let boxed_bytes = Box::leak(bytes.to_vec().into_boxed_slice());
+    fonts.font_data.insert(
+        name.to_owned(),
+        FontData::from_static(boxed_bytes),
+    );
+
+    fonts
+        .families
+        .get_mut(&egui::FontFamily::Proportional)
+        .unwrap()
+        .insert(0, name.to_owned());
+
+    ctx.set_fonts(fonts);
+}
+// pub fn configure_fonts(ctx: &egui::Context) {
+//     let mut fonts = egui::FontDefinitions::default();
+//
+//     // Helper function to insert font data and set it in the font families
+//     let mut insert_font = |name: &str, bytes| {
+//
+//     };
+//
+//     // Add both fonts
+//
+//     // insert_font("NotoSansJP", include_bytes!("../../NotoSansJP-Regular.ttf"));
+//
+//     // Set the default font to CuteFont
+//     // fonts.family_and_size.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
+//     // fonts.families.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
+//
+//     ctx.set_fonts(fonts);
+// }
+
+
+
+pub fn configure_text_styles(ctx: &egui::Context) {
+    use egui::FontFamily::Proportional;
+    use egui::TextStyle::*;
+
+    let mut style = (*ctx.style()).clone();
+    style.text_styles = [
+        (Heading, FontId::new(20.0, Proportional)),
+        (Body, FontId::new(10.0, Proportional)),
+        (Monospace, FontId::new(10.0, Proportional)),
+        (Button, FontId::new(10.0, Proportional)),
+        (Small, FontId::new(9.0, Proportional)),
+    ].into();
+    ctx.set_style(style);
 }

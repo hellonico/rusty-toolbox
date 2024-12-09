@@ -1,35 +1,8 @@
 use std::process::exit;
 use eframe::egui::{self, menu, Align, Color32, ComboBox, Context, Layout, RichText, ScrollArea, TextBuffer, TextEdit, TopBottomPanel, Ui};
-use lib_egui_utils::my_default_options;
+use lib_egui_utils::{add_font, configure_text_styles, my_default_options};
 use lib_ollama_utils::{fetch_models, ollama, ollama_with_messages};
 use std::sync::{Arc, Mutex};
-
-fn configure_fonts(ctx: &egui::Context) {
-    let mut fonts = egui::FontDefinitions::default();
-
-    // Helper function to insert font data and set it in the font families
-    let mut insert_font = |name: &str, bytes| {
-        fonts.font_data.insert(
-            name.to_owned(),
-            egui::FontData::from_static(bytes),
-        );
-        fonts
-            .families
-            .get_mut(&egui::FontFamily::Proportional)
-            .unwrap()
-            .insert(0, name.to_owned());
-    };
-
-    // Add both fonts
-    insert_font("CuteFont", include_bytes!("../../SourGummy-Thin.ttf"));
-    // insert_font("NotoSansJP", include_bytes!("../../NotoSansJP-Regular.ttf"));
-
-    // Set the default font to CuteFont
-    // fonts.family_and_size.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
-    // fonts.families.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
-
-    ctx.set_fonts(fonts);
-}
 
 
 
@@ -49,7 +22,10 @@ pub struct CuteChatApp {
 }
 
 impl CuteChatApp {
-    pub fn new() -> Self {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        configure_text_styles(&cc.egui_ctx);
+        //install_image_loaders(&cc.egui_ctx);
+
         Self {
             messages: Arc::new(Mutex::new(vec![
                 // ("assistant".to_owned(), "Hi there! 💖".to_owned()),
@@ -116,6 +92,7 @@ impl CuteChatApp {
 
             if chat_mode {
                 ollama_with_messages(&*ollama_url, &ollama_model, &ollama_messages, |token| {
+                    // println!("{:?}", token);
                     streamed_words.lock().unwrap().push(token.parse().unwrap());
                 })
                     .await
@@ -129,9 +106,8 @@ impl CuteChatApp {
                     .expect("error");
             }
 
-
             // Finalize the message when all words are streamed
-            let final_message = streamed_words.lock().unwrap().join(" ");
+            let final_message = streamed_words.lock().unwrap().join("");
             messages
                 .lock()
                 .unwrap()
@@ -276,7 +252,7 @@ impl CuteChatApp {
                     }
 
                     if let Ok(streamed_words) = self.streamed_words.lock() {
-                        let streamed = streamed_words.join(" "); // Join in the UI thread only for displaying
+                        let streamed = streamed_words.join(""); // Join in the UI thread only for displaying
                         if !streamed_words.is_empty() {
                             ui.colored_label(Color32::LIGHT_BLUE, format!("🐾 {}", streamed));
                         }
@@ -330,7 +306,10 @@ impl CuteChatApp {
 // Implement the eframe::App trait
 impl eframe::App for CuteChatApp {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
-        configure_fonts(ctx); // Apply the font configuration
+
+        let bytes= include_bytes!("../../SourceCodePro-Regular.ttf");
+        // configure_fonts(ctx); // Apply the font configuration
+        add_font(ctx , "CuteFont", bytes );
         ctx.set_pixels_per_point(3.0);
 
         TopBottomPanel::bottom("bottom_panel").show(ctx, |ui| {
@@ -373,6 +352,6 @@ async fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "Cute Chat App",
         options,
-        Box::new(|_cc| Ok(Box::<CuteChatApp>::new(CuteChatApp::new()))),
+        Box::new(|cc| Ok(Box::<CuteChatApp>::new(CuteChatApp::new(cc)))),
     )
 }
