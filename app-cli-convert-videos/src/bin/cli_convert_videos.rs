@@ -1,12 +1,12 @@
 use app_cli_convert_videos::encode_video;
-use clap::{Arg, Command as ClapCommand};
+use clap::{Arg, Command as ClapCommand, Command};
 use indicatif::{ProgressBar, ProgressStyle};
 use lib_egui_utils::{generate_output_path, list_files_from_dir2, SortBy};
 use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    let matches = ClapCommand::new("Video Encoder")
+    let matches = Command::new("Video Encoder")
         .version("1.0")
         .about("Encodes video files using ffmpeg")
         .arg(

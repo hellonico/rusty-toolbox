@@ -1,0 +1,24 @@
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2024.07.22"]
+[Round "?"]
+[White "SmithTails"]
+[Black "krishTGW"]
+[Result "1-0"]
+[ECO "C47"]
+[WhiteElo "139"]
+[BlackElo "136"]
+[TimeControl "600"]
+[EndTime "10:06:47 PDT"]
+[Termination "SmithTails won by checkmate"]
+
+1. e4 e5 2. Nf3 Nc6 3. Nc3 Nf6 4. d4 d5 5. exd5 Nxd5 6. Nxd5 Qxd5 7. Nxe5 Nxe5
+8. dxe5 Qxe5+ 9. Be2 Bg4 10. f3 Bb4+ 11. c3 Bxc3+ 12. bxc3 Qxc3+ 13. Bd2 Qxa1
+14. Qxa1 Rd8 15. fxg4 Ke7 16. O-O Rd6 17. Bb4 Rd8 18. Rd1 Kf8 19. Rxd6 Rxd6 20.
+Bxd6+ cxd6 21. Qc1 b6 22. Qc8+ Ke7 23. Qc7+ Ke6 24. Bc4+ Ke5 25. Qe7+ Kd4 26.
+Qc7 b5 27. Bxb5 a5 28. Qc4+ Ke5 29. Qxf7 g5 30. Qg7+ Kf4 31. Qxh7 Kxg4 32. Bd7+
+Kf4 33. Qh3 d5 34. Qg3+ Ke4 35. h4 gxh4 36. Qxh4+ Ke5 37. g4 d4 38. Bb5 Ke4 39.
+Qh7+ Ke3 40. Qh6+ Kf3 41. Qd6 Kxg4 42. Qxd4+ Kf5 43. Bd7+ Kg5 44. Qg4+ Kf6 45.
+Qf4+ Ke7 46. Bf5 Kf6 47. Bh7+ Kg7 48. Qh4 a4 49. Qg4+ Kf6 50. Qxa4 Kg5 51. Qd7
+Kh6 52. a4 Kh5 53. a5 Kg5 54. a6 Kf6 55. a7 Ke5 56. a8=Q Kf4 57. Qaa4+ Ke5 58.
+Qdd4+ Ke6 59. Qad7# 1-0

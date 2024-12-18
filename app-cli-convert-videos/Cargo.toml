@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.2", features = ["derive"] }
+clap = { version = "4.5.23", features = ["derive"] }
 indicatif = "0.17"
 eframe = "0.29.1"
 egui_extras = { version = "0.29.1", features = ["image", "all_loaders"] }

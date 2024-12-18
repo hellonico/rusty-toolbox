@@ -1,0 +1,22 @@
+[package]
+name = "ui-download-audio"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+scraper = "0.13"
+eframe = "0.29.1"
+open = "5.3.1"
+lib_egui_utils = { path = "../lib-egui-utils" }
+lib-ffmpeg-utils = { path = "../lib-ffmpeg-utils" }
+
+[package.metadata.bundle.bin.ui-download-audio]
+name = "Yoquilla"
+identifier = "info.hellonico.yoquilla"
+icon = ["icon.icns"]
+version = "1.0.0"
+
+[[bin]]
+name = "ui-download-audio"
+path = "src/bin/ui2.rs"

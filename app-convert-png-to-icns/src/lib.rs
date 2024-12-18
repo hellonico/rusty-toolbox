@@ -1,11 +1,9 @@
-use std::fs::File;
-use std::io::{BufReader, BufWriter, Write};
-use std::path::PathBuf;
-use image::{io::Reader as ImageReader, ImageFormat};
 use icns::{IconFamily, IconType, Image};
-use image::codecs::png::PngEncoder;
-use tempfile::{NamedTempFile, TempPath};
+use image::io::Reader as ImageReader;
 use lib_ffmpeg_utils::append_to_home_log;
+use std::fs::File;
+use std::io::{BufReader, Write};
+use tempfile::NamedTempFile;
 
 pub fn png_to_icns(input_path: &str, output_path: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Load the PNG image

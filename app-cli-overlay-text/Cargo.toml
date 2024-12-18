@@ -1,0 +1,15 @@
+[package]
+name = "app-cli-overlay-text"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+image = { version = "0.25", features = ["jpeg", "png"] } # Add the types you want support for
+rusttype = "0.9.3"
+clap = "4.5.23"
+egui_extras = { version = "*", features = ["all_loaders"] }
+eframe = "0.29.1"            # egui framework
+rfd = "0.15.1"
+#chrono = "0.4.39"
+tempfile = "3.8"  # Check for the latest version
+

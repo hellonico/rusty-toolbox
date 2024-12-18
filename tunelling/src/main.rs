@@ -12,7 +12,7 @@ use std::process::{exit, Child, Command, Stdio};
 use std::{env, fs};
 use egui_extras::install_image_loaders;
 use tokio::io::AsyncWriteExt;
-use lib_egui_utils::{icon, my_default_options};
+use lib_egui_utils::{add_font, configure_text_styles, icon, my_default_options};
 
 const RDP_TEMPLATE: &str = r"
 screen mode id:i:2
@@ -376,17 +376,6 @@ impl MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        install_image_loaders(ctx);
-
-        let mut style = (*ctx.style()).clone();
-        style.text_styles = [
-            (TextStyle::Button, FontId::proportional(10.0)),
-            (TextStyle::Heading, FontId::proportional(11.0)),
-            (TextStyle::Body, FontId::proportional(10.0)),
-            (TextStyle::Monospace, FontId::proportional(10.0)),
-        ]
-            .into();
-        ctx.set_style(style);
 
         egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
@@ -642,9 +631,14 @@ async fn main() -> Result<(), Error> {
     let app = MyApp::new(file_path.into());
 
     let options =
-        my_default_options(400.0, 300.0, include_bytes!("icon.png"));
+        my_default_options(800.0, 300.0, include_bytes!("icon.png"));
 
     eframe::run_native("Tunnels",
                        options,
-                       Box::new(|_cc| Ok(Box::new(app))))
+                       Box::new(|_cc| {
+                           configure_text_styles(&_cc.egui_ctx);
+                           install_image_loaders(&_cc.egui_ctx);
+                           add_font(&_cc.egui_ctx , "CuteFont", include_bytes!("../../ui-fonts/SourceCodePro-Regular.ttf"), );
+                           Ok(Box::new(app))
+                       }))
 }

@@ -1,0 +1,33 @@
+[package]
+name = "app-ui-gitlab-download-file"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde_json = "1.0.133"
+tokio = { version = "1", features = ["full"] }  # For async process handling
+gitlab = "0.1706.0"
+serde = { version = "1.0.210", features = ["derive"] }
+base64 = "0.22.1"
+log = "0.4.22"
+env_logger = "0.11.5"
+serde_yaml = "0.9.34+deprecated" # for gitlab crate
+
+eframe = "0.29.1"
+rfd = "0.15.1"
+open = "5.3.1"
+egui_extras = { version = "0.29.1", features = ["image", "all_loaders"] }
+lib_egui_utils = { path = "../lib-egui-utils" }
+
+
+[package.metadata.bundle.bin.app-ui-gitlab-download-file]
+name = "Iguana"
+identifier = "info.hellonico.iguana"
+icon = ["icon.icns"] # Path to your app's icon (optional)
+version = "1.0.0"
+#[cfg(target_os = "macos")]
+resources = ["resources"]
+
+[[bin]]
+name = "app-ui-gitlab-download-file"
+path = "examples/download_ui.rs"

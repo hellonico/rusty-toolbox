@@ -18,4 +18,4 @@ version = "1.0.0"
 
 [[bin]]
 name = "app-chess"
-path = "src/main.rs"
+path = "src/bin/main.rs"

@@ -1,9 +1,9 @@
-use std::error::Error;
-use eframe::{egui};
-use std::path::Path;
 use app_convert_png_to_icns::png_to_icns;
+use eframe::egui;
 use lib_egui_utils::my_default_options;
-use lib_ffmpeg_utils::append_to_home_log;
+use lib_ffmpeg_utils::log::append_to_home_log;
+use std::error::Error;
+use std::path::Path;
 
 fn main() -> Result<(), eframe::Error> {
     let options =

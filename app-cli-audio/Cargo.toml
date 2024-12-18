@@ -1,0 +1,11 @@
+[package]
+name = "app-cli-audio"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rodio = "0.20.1"
+cpal = "0.15.3"
+
+kira = "0.9.6"
+rand = "0.8"

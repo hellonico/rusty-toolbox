@@ -9,6 +9,14 @@ lib_ollama_utils = { path = "../lib-ollama-utils" }
 pollster = "0.4.0"
 tokio = "1.41.1"
 lib_egui_utils = { path = "../lib-egui-utils" }
+serde_json = "1.0.133"
+serde = { version = "1.0.210", features = ["derive"] }
+chrono = "0.4.39"
+egui_extras = "0.29.1"
+open = "5.3.1"
+arboard = "3.4.1"
+clap = "4.5.23"
+reqwest = "0.12.9"
 
 [package.metadata.bundle.bin.app-ui-cute-llm]
 name = "Cute Lama"

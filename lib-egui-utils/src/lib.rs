@@ -1,3 +1,5 @@
+
+
 use std::{env, fs, io};
 use std::fs::File;
 use std::path::{Path, PathBuf};
@@ -5,7 +7,6 @@ use std::process::Command;
 use std::time::SystemTime;
 use eframe::egui::{FontId, IconData, ViewportBuilder};
 use eframe::{egui, NativeOptions};
-use eframe::egui::UiKind::Menu;
 use egui::FontData;
 use image::GenericImageView;
 use SortBy::Size;
@@ -101,7 +102,9 @@ pub fn icon(icon_bytes: &[u8]) -> IconData {
 pub fn my_default_options(x: f32, y: f32, bytes: &[u8]) -> NativeOptions {
     let app_icon = icon(bytes);
     let options = NativeOptions {
-        viewport: ViewportBuilder::default()
+
+        // default_theme: eframe::Theme::Light, // Use the light theme
+        viewport: ViewportBuilder::default().with_transparent(true)
             .with_close_button(true)
             .with_inner_size(egui::Vec2::new(x, y))
             .with_icon(app_icon),
@@ -224,26 +227,6 @@ pub fn add_font(ctx: &egui::Context, name: &str, bytes:&[u8]) {
 
     ctx.set_fonts(fonts);
 }
-// pub fn configure_fonts(ctx: &egui::Context) {
-//     let mut fonts = egui::FontDefinitions::default();
-//
-//     // Helper function to insert font data and set it in the font families
-//     let mut insert_font = |name: &str, bytes| {
-//
-//     };
-//
-//     // Add both fonts
-//
-//     // insert_font("NotoSansJP", include_bytes!("../../NotoSansJP-Regular.ttf"));
-//
-//     // Set the default font to CuteFont
-//     // fonts.family_and_size.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
-//     // fonts.families.insert(egui::FontFamily::Proportional, vec!["CuteFont".to_owned()]);
-//
-//     ctx.set_fonts(fonts);
-// }
-
-
 
 pub fn configure_text_styles(ctx: &egui::Context) {
     use egui::FontFamily::Proportional;
@@ -252,10 +235,12 @@ pub fn configure_text_styles(ctx: &egui::Context) {
     let mut style = (*ctx.style()).clone();
     style.text_styles = [
         (Heading, FontId::new(20.0, Proportional)),
-        (Body, FontId::new(10.0, Proportional)),
-        (Monospace, FontId::new(10.0, Proportional)),
-        (Button, FontId::new(10.0, Proportional)),
-        (Small, FontId::new(9.0, Proportional)),
+        (Body, FontId::new(11.0, Proportional)),
+        (Monospace, FontId::new(11.0, Proportional)),
+        (Button, FontId::new(11.0, Proportional)),
+        (Small, FontId::new(10.0, Proportional)),
     ].into();
     ctx.set_style(style);
 }
+
+pub mod mywidgets;
